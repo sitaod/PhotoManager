@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}用户登录{% endblock %}
+
+{% block extra_css %}
+<style>
+    .login-container {
+        max-width: 450px;
+        margin: 50px auto;
+    }
+    .card {
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="login-container">
+        <div class="card">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <i class="bi bi-box-arrow-in-right text-primary" style="font-size: 3rem;"></i>
+                    <h3 class="mt-3">用户登录</h3>
+                    <p class="text-muted">欢迎回来！请登录您的账户</p>
+                </div>
+
+                <form method="POST" action="{{ url_for('auth.login') }}" id="loginForm">
+                    <!-- 用户名/邮箱 -->
+                    <div class="mb-3">
+                        <label for="username" class="form-label">
+                            <i class="bi bi-person"></i> 用户名或邮箱
+                        </label>
+                        <input 
+                            type="text" 
+                            class="form-control" 
+                            id="username" 
+                            name="username" 
+                            placeholder="请输入用户名或邮箱"
+                            required
+                            autofocus
+                        >
+                    </div>
+
+                    <!-- 密码 -->
+                    <div class="mb-3">
+                        <label for="password" class="form-label">
+                            <i class="bi bi-lock"></i> 密码
+                        </label>
+                        <input 
+                            type="password" 
+                            class="form-control" 
+                            id="password" 
+                            name="password" 
+                            placeholder="请输入密码"
+                            required
+                        >
+                    </div>
+
+                    <!-- 记住我 -->
+                    <div class="mb-3 form-check">
+                        <input 
+                            type="checkbox" 
+                            class="form-check-input" 
+                            id="remember" 
+                            name="remember"
+                        >
+                        <label class="form-check-label" for="remember">
+                            记住我
+                        </label>
+                    </div>
+
+                    <!-- 登录按钮 -->
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-box-arrow-in-right"></i> 登录
+                        </button>
+                    </div>
+                </form>
+
+                <!-- 分隔线 -->
+                <hr class="my-4">
+
+                <!-- 注册提示 -->
+                <div class="text-center">
+                    <p class="text-muted mb-0">
+                        还没有账户？
+                        <a href="{{ url_for('auth.register') }}" class="text-decoration-none">
+                            立即注册
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 表单客户端验证（可选）
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    
+    if (!username || !password) {
+        e.preventDefault();
+        alert('用户名和密码不能为空！');
+    }
+});
+</script>
+{% endblock %}

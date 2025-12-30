@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block title %}用户注册{% endblock %}
+
+{% block extra_css %}
+<style>
+    .register-container {
+        max-width: 500px;
+        margin: 50px auto;
+    }
+    .card {
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .password-requirements {
+        font-size: 0.875rem;
+        color: #6c757d;
+    }
+    .password-requirements li {
+        margin-bottom: 0.25rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="register-container">
+        <div class="card">
+            <div class="card-body p-5">
+                <div class="text-center mb-4">
+                    <i class="bi bi-person-plus text-primary" style="font-size: 3rem;"></i>
+                    <h3 class="mt-3">用户注册</h3>
+                    <p class="text-muted">创建您的账户，开始使用图片管理系统</p>
+                </div>
+
+                <form method="POST" action="{{ url_for('auth.register') }}" id="registerForm">
+                    <!-- 用户名 -->
+                    <div class="mb-3">
+                        <label for="username" class="form-label">
+                            <i class="bi bi-person"></i> 用户名 <span class="text-danger">*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            class="form-control" 
+                            id="username" 
+                            name="username" 
+                            placeholder="请输入用户名（最多50个字符）"
+                            maxlength="50"
+                            required
+                            autofocus
+                        >
+                    </div>
+
+                    <!-- 邮箱 -->
+                    <div class="mb-3">
+                        <label for="email" class="form-label">
+                            <i class="bi bi-envelope"></i> 邮箱 <span class="text-danger">*</span>
+                        </label>
+                        <input 
+                            type="email" 
+                            class="form-control" 
+                            id="email" 
+                            name="email" 
+                            placeholder="请输入邮箱地址"
+                            maxlength="100"
+                            required
+                        >
+                    </div>
+
+                    <!-- 密码 -->
+                    <div class="mb-3">
+                        <label for="password" class="form-label">
+                            <i class="bi bi-lock"></i> 密码 <span class="text-danger">*</span>
+                        </label>
+                        <input 
+                            type="password" 
+                            class="form-control" 
+                            id="password" 
+                            name="password" 
+                            placeholder="请输入密码"
+                            required
+                        >
+                        <div class="password-requirements mt-2">
+                            <small>密码要求：</small>
+                            <ul class="mb-0 ps-3">
+                                <li>长度必须大于 6 个字符</li>
+                                <li>必须包含大写字母、小写字母、数字、特殊字符中的至少两种</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- 确认密码 -->
+                    <div class="mb-3">
+                        <label for="confirm_password" class="form-label">
+                            <i class="bi bi-lock-fill"></i> 确认密码 <span class="text-danger">*</span>
+                        </label>
+                        <input 
+                            type="password" 
+                            class="form-control" 
+                            id="confirm_password" 
+                            name="confirm_password" 
+                            placeholder="请再次输入密码"
+                            required
+                        >
+                    </div>
+
+                    <!-- 注册按钮 -->
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="bi bi-person-plus"></i> 注册
+                        </button>
+                    </div>
+                </form>
+
+                <!-- 分隔线 -->
+                <hr class="my-4">
+
+                <!-- 登录提示 -->
+                <div class="text-center">
+                    <p class="text-muted mb-0">
+                        已有账户？
+                        <a href="{{ url_for('auth.login') }}" class="text-decoration-none">
+                            立即登录
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// 客户端密码复杂度校验（与后端保持一致）
+function validatePasswordComplexity(password) {
+    // 长度检查
+    if (password.length <= 6) {
+        return { valid: false, message: '密码长度必须大于 6 个字符' };
+    }
+    
+    // 字符类型检查
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasDigit = /[0-9]/.test(password);
+    const hasSpecial = /[!@#$%^&*()_+\-=\[\]{};:'",.<>?/\\|`~]/.test(password);
+    
+    const typeCount = [hasUppercase, hasLowercase, hasDigit, hasSpecial].filter(Boolean).length;
+    
+    if (typeCount < 2) {
+        return { valid: false, message: '密码必须包含大写字母、小写字母、数字、特殊字符中的至少两种' };
+    }
+    
+    return { valid: true };
+}
+
+// 表单提交验证
+document.getElementById('registerForm').addEventListener('submit', function(e) {
+    const username = document.getElementById('username').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+    const confirmPassword = document.getElementById('confirm_password').value;
+    
+    // 基本字段检查
+    if (!username || !email || !password || !confirmPassword) {
+        e.preventDefault();
+        alert('所有字段均为必填项！');
+        return;
+    }
+    
+    // 邮箱格式检查
+    const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailPattern.test(email)) {
+        e.preventDefault();
+        alert('邮箱格式不正确！');
+        return;
+    }
+    
+    // 密码复杂度检查
+    const passwordCheck = validatePasswordComplexity(password);
+    if (!passwordCheck.valid) {
+        e.preventDefault();
+        alert(passwordCheck.message);
+        return;
+    }
+    
+    // 两次密码一致性检查
+    if (password !== confirmPassword) {
+        e.preventDefault();
+        alert('两次输入的密码不一致！');
+        return;
+    }
+});
+
+// 实时密码强度提示（可选功能）
+document.getElementById('password').addEventListener('input', function() {
+    const password = this.value;
+    const result = validatePasswordComplexity(password);
+    
+    if (password.length > 0 && !result.valid) {
+        this.classList.add('is-invalid');
+        this.classList.remove('is-valid');
+    } else if (result.valid) {
+        this.classList.add('is-valid');
+        this.classList.remove('is-invalid');
+    } else {
+        this.classList.remove('is-valid', 'is-invalid');
+    }
+});
+</script>
+{% endblock %}
