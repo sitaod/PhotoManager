@@ -78,3 +78,43 @@ python run.py
 
 The application will be available at `http://localhost:5000`
 
+## Features
+
+### User Authentication
+- User registration with email validation
+- Password complexity validation (length > 6, at least 2 character types)
+- User login (supports username or email)
+- Session management with Flask-Login
+- User logout
+
+### Image Management
+- **Image Upload**: Upload images with unique UUID-based filenames
+- **EXIF Extraction**: Automatically extract photo metadata:
+  - Shoot time (from EXIF DateTime)
+  - GPS location (from EXIF GPS info)
+- **Resolution Detection**: Capture image dimensions (format: WxH)
+- **Thumbnail Generation**: Auto-generate thumbnails (max 400px)
+- **Image Gallery**: Responsive grid display of uploaded images
+  - Mobile: 2-3 columns
+  - Desktop: 4-6 columns
+- **Metadata Display**: Show upload time, shoot time, resolution, location
+
+## Database Schema
+
+### User Table
+- `id`: User ID
+- `username`: Unique username
+- `email`: Unique email address
+- `password_hash`: Hashed password
+- `register_time`: Registration timestamp
+
+### Image Table
+- `id`: Image ID
+- `user_id`: Foreign key to User
+- `image_path`: Path to original image
+- `thumbnail_path`: Path to thumbnail
+- `upload_time`: Upload timestamp
+- `shoot_time`: Photo shoot time (EXIF)
+- `shoot_location`: GPS location (EXIF)
+- `resolution`: Image resolution (WxH)
+

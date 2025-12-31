@@ -35,6 +35,10 @@ def create_app(config_name='default'):
     from app.auth import auth_bp
     app.register_blueprint(auth_bp, url_prefix='/auth')
     
+    # Register image blueprint
+    from app.image import image_bp
+    app.register_blueprint(image_bp, url_prefix='/image')
+    
     # Register main routes
     from app import main_routes
     main_routes.register_routes(app)

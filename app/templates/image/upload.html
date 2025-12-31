@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+
+{% block title %}上传图片 - 图片管理系统{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-6">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <h2 class="card-title mb-4">
+                        <i class="bi bi-cloud-upload"></i> 上传图片
+                    </h2>
+                    
+                    <form method="POST" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="file" class="form-label">选择图片文件</label>
+                            <input type="file" 
+                                   class="form-control form-control-lg" 
+                                   id="file" 
+                                   name="file" 
+                                   accept="image/*" 
+                                   required>
+                            <small class="form-text text-muted d-block mt-2">
+                                支持格式：JPG, PNG, GIF, BMP, WebP（最大 50MB）
+                            </small>
+                        </div>
+                        
+                        <div id="preview" class="mb-3" style="display: none;">
+                            <img id="previewImage" 
+                                 src="" 
+                                 class="img-fluid" 
+                                 style="max-height: 300px; object-fit: contain;">
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-upload"></i> 上传
+                            </button>
+                            <a href="{{ url_for('image.gallery') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> 返回图片库
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('file').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            document.getElementById('previewImage').src = event.target.result;
+            document.getElementById('preview').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+
+{% block title %}我的图片库 - 图片管理系统{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h2><i class="bi bi-images"></i> 我的图片库</h2>
+        </div>
+        <div class="col-md-6 text-end">
+            <a href="{{ url_for('image.upload') }}" class="btn btn-primary">
+                <i class="bi bi-cloud-upload"></i> 上传新图片
+            </a>
+        </div>
+    </div>
+    
+    {% if images %}
+        <div class="row g-3">
+            {% for image in images %}
+                <div class="col-md-6 col-lg-4 col-xl-3">
+                    <div class="card h-100 shadow-sm">
+                        <div style="height: 200px; overflow: hidden; background-color: #f8f9fa;">
+                            <img src="{{ url_for('static', filename=image.thumbnail_path) }}" 
+                                 alt="缩略图" 
+                                 class="w-100 h-100"
+                                 style="object-fit: cover;">
+                        </div>
+                        <div class="card-body">
+                            <p class="card-text small text-muted">
+                                <i class="bi bi-calendar"></i> 
+                                上传时间：{{ image.upload_time.strftime('%Y-%m-%d %H:%M') }}
+                            </p>
+                            {% if image.resolution %}
+                                <p class="card-text small text-muted">
+                                    <i class="bi bi-aspect-ratio"></i> 
+                                    分辨率：{{ image.resolution }}
+                                </p>
+                            {% endif %}
+                            {% if image.shoot_time %}
+                                <p class="card-text small text-muted">
+                                    <i class="bi bi-camera"></i> 
+                                    拍摄时间：{{ image.shoot_time.strftime('%Y-%m-%d %H:%M') }}
+                                </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info" role="alert">
+            <i class="bi bi-info-circle"></i> 
+            还没有图片。<a href="{{ url_for('image.upload') }}" class="alert-link">上传你的第一张图片</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -11,7 +11,7 @@
                     <i class="bi bi-images text-primary" style="font-size: 5rem;"></i>
                     <h1 class="display-4 mt-4">欢迎使用图片管理系统</h1>
                     <p class="lead text-muted mt-3">
-                        一个基于 Flask + MySQL + Vue.js 构建的现代化图片管理平台
+                        一个基于 Flask + MySQL 构建的现代化图片管理平台
                     </p>
                     
                     {% if current_user.is_authenticated %}
@@ -19,7 +19,14 @@
                             <i class="bi bi-check-circle-fill"></i>
                             您已登录，欢迎回来，<strong>{{ current_user.username }}</strong>！
                         </div>
-                        <p class="text-muted">后续功能正在开发中，敬请期待...</p>
+                        <div class="mt-4">
+                            <a href="{{ url_for('image.gallery') }}" class="btn btn-primary btn-lg me-2">
+                                <i class="bi bi-images"></i> 我的图片库
+                            </a>
+                            <a href="{{ url_for('image.upload') }}" class="btn btn-success btn-lg">
+                                <i class="bi bi-cloud-upload"></i> 上传图片
+                            </a>
+                        </div>
                     {% else %}
                         <div class="mt-4">
                             <a href="{{ url_for('auth.register') }}" class="btn btn-primary btn-lg me-2">

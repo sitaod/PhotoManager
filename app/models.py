@@ -36,3 +36,27 @@ class User(UserMixin, db.Model):
     def get_id(self):
         """Return user's unique identifier"""
         return str(self.id)
+
+
+class Image(db.Model):
+    """
+    Image model
+    Strictly corresponds to the SQL table structure in the design document
+    """
+    __tablename__ = 'image'
+    
+    # Field definitions
+    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True, nullable=False)
+    user_id = db.Column(db.BigInteger, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False, index=True)
+    image_path = db.Column(db.String(512), nullable=False)
+    thumbnail_path = db.Column(db.String(512), nullable=False)
+    upload_time = db.Column(db.DateTime, nullable=False, default=datetime.now)
+    shoot_time = db.Column(db.DateTime, nullable=True)
+    shoot_location = db.Column(db.String(200), nullable=True)
+    resolution = db.Column(db.String(50), nullable=True)
+    
+    # Foreign key relationship
+    user = db.relationship('User', backref=db.backref('images', cascade='all, delete-orphan'))
+    
+    def __repr__(self):
+        return f'<Image {self.id} of user {self.user_id}>'
