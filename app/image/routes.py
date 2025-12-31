@@ -14,14 +14,15 @@ from app.models import Image
 from app import db
 
 
-# Define upload directories
-UPLOAD_FOLDER = 'app/static/uploads'
-ORIGINALS_FOLDER = os.path.join(UPLOAD_FOLDER, 'originals')
-THUMBNAILS_FOLDER = os.path.join(UPLOAD_FOLDER, 'thumbnails')
+# Base paths (absolute) to avoid issues with non-ASCII filenames and working directory changes
+BASE_DIR = Path(__file__).resolve().parent.parent
+UPLOAD_FOLDER = BASE_DIR / 'static' / 'uploads'
+ORIGINALS_FOLDER = UPLOAD_FOLDER / 'originals'
+THUMBNAILS_FOLDER = UPLOAD_FOLDER / 'thumbnails'
 
 # Create directories if they don't exist
-os.makedirs(ORIGINALS_FOLDER, exist_ok=True)
-os.makedirs(THUMBNAILS_FOLDER, exist_ok=True)
+ORIGINALS_FOLDER.mkdir(parents=True, exist_ok=True)
+THUMBNAILS_FOLDER.mkdir(parents=True, exist_ok=True)
 
 # Allowed file extensions
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp'}
@@ -98,6 +99,9 @@ def generate_thumbnail(source_path, thumb_path, max_size=400):
     """
     try:
         image = PILImage.open(source_path)
+        # Convert to RGB to avoid saving issues for images with alpha channels
+        if image.mode in ('RGBA', 'P'):
+            image = image.convert('RGB')
         image.thumbnail((max_size, max_size), PILImage.Resampling.LANCZOS)
         image.save(thumb_path, 'JPEG', quality=85)
         return True
@@ -130,12 +134,15 @@ def upload():
     
     try:
         # Generate unique filename using UUID
-        file_extension = file.filename.rsplit('.', 1)[1].lower()
+        if '.' in file.filename:
+            file_extension = file.filename.rsplit('.', 1)[1].lower()
+        else:
+            file_extension = 'jpg'  # fallback for filenames without extension
         unique_filename = f"{uuid.uuid4()}.{file_extension}"
         
-        # Save original image
-        original_path = os.path.join(ORIGINALS_FOLDER, unique_filename)
-        file.save(original_path)
+        # Save original image (absolute path to avoid encoding issues)
+        original_path = ORIGINALS_FOLDER / unique_filename
+        file.save(str(original_path))
         
         # Extract EXIF data
         shoot_time, shoot_location = extract_exif_data(original_path)
@@ -145,8 +152,8 @@ def upload():
         
         # Generate thumbnail
         thumb_filename = f"{uuid.uuid4()}.jpg"
-        thumb_path = os.path.join(THUMBNAILS_FOLDER, thumb_filename)
-        generate_thumbnail(original_path, thumb_path)
+        thumb_path = THUMBNAILS_FOLDER / thumb_filename
+        generate_thumbnail(str(original_path), str(thumb_path))
         
         # Store relative paths for database
         relative_original = f"uploads/originals/{unique_filename}"
