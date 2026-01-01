@@ -52,3 +52,6 @@ Thumbs.db
 
 # User uploads (keep generated/media files out of git)
 app/static/uploads/
+
+# Other
+实验报告.md

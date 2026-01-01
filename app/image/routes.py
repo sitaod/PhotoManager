@@ -410,6 +410,7 @@ def search():
 def search_results():
     """Search results page"""
     tag = request.args.get('tag', '').strip()
+    location = request.args.get('location', '').strip()
     date_start = request.args.get('date_start', '')
     date_end = request.args.get('date_end', '')
     
@@ -419,6 +420,10 @@ def search_results():
     # Filter by tag if provided
     if tag:
         query = query.join(Tag).filter(Tag.tag_content.ilike(f"%{tag}%")).distinct()
+    
+    # Filter by location if provided
+    if location:
+        query = query.filter(Image.shoot_location.ilike(f"%{location}%"))
     
     # Filter by date range if provided
     if date_start:
@@ -441,4 +446,4 @@ def search_results():
     # Order by upload time descending
     images = query.order_by(Image.upload_time.desc()).all()
     
-    return render_template('image/search_results.html', images=images, tag=tag, date_start=date_start, date_end=date_end)
+    return render_template('image/search_results.html', images=images, tag=tag, location=location, date_start=date_start, date_end=date_end)

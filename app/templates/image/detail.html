@@ -102,13 +102,15 @@
 
     <!-- Back Button -->
     <div class="mt-4">
-        <a href="{{ url_for('image.gallery') }}" class="btn btn-secondary">返回相册</a>
+        <a href="{{ url_for('image.gallery') }}" class="btn btn-secondary">返回图片库</a>
     </div>
 </div>
 
 <!-- Loading Spinner (hidden by default) -->
-<div id="loading-spinner" class="spinner-border d-none" role="status" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999;">
-    <span class="visually-hidden">处理中...</span>
+<div id="loading-spinner" class="d-none" role="status" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.3); z-index: 9999; display: flex; align-items: center; justify-content: center;">
+    <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;">
+        <span class="visually-hidden">处理中...</span>
+    </div>
 </div>
 
 <script>
@@ -116,12 +118,16 @@ const IMAGE_ID = {{ image.id }};
 
 // Show loading spinner
 function showLoading() {
-    document.getElementById('loading-spinner').classList.remove('d-none');
+    const spinner = document.getElementById('loading-spinner');
+    spinner.classList.remove('d-none');
+    spinner.style.display = 'flex';
 }
 
 // Hide loading spinner
 function hideLoading() {
-    document.getElementById('loading-spinner').classList.add('d-none');
+    const spinner = document.getElementById('loading-spinner');
+    spinner.classList.add('d-none');
+    spinner.style.display = 'none';
 }
 
 // Rotate image
@@ -212,7 +218,7 @@ async function addTag() {
 
     showLoading();
     try {
-        const response = await fetch('/api/tag/add', {
+        const response = await fetch('/image/api/tag/add', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -257,7 +263,7 @@ async function removeTag(tagId) {
 
     showLoading();
     try {
-        const response = await fetch(`/api/tag/remove/${tagId}`, {
+        const response = await fetch(`/image/api/tag/remove/${tagId}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
