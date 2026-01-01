@@ -57,6 +57,23 @@ class Image(db.Model):
     
     # Foreign key relationship
     user = db.relationship('User', backref=db.backref('images', cascade='all, delete-orphan'))
+    tags = db.relationship('Tag', backref=db.backref('image', lazy=True), cascade='all, delete-orphan')
     
     def __repr__(self):
         return f'<Image {self.id} of user {self.user_id}>'
+
+
+class Tag(db.Model):
+    """
+    Tag model for image classification
+    Strictly corresponds to the SQL table structure in the design document
+    """
+    __tablename__ = 'tag'
+    
+    # Field definitions
+    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True, nullable=False)
+    image_id = db.Column(db.BigInteger, db.ForeignKey('image.id', ondelete='CASCADE'), nullable=False, index=True)
+    tag_content = db.Column(db.String(50), nullable=False, index=True)
+    
+    def __repr__(self):
+        return f'<Tag {self.tag_content}>'

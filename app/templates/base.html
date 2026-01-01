@@ -45,6 +45,21 @@
                     {% if current_user.is_authenticated %}
                         <!-- 已登录状态 -->
                         <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('image.gallery') }}">
+                                <i class="bi bi-images"></i> 我的相册
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('image.search') }}">
+                                <i class="bi bi-search"></i> 搜索
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="{{ url_for('image.upload') }}">
+                                <i class="bi bi-cloud-upload"></i> 上传
+                            </a>
+                        </li>
+                        <li class="nav-item">
                             <span class="navbar-text text-white me-3">
                                 <i class="bi bi-person-circle"></i> 欢迎, {{ current_user.username }}
                             </span>

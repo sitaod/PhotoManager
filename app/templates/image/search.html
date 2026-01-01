@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}搜索图片 - PhotoManager{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <h2 class="mb-4">搜索图片</h2>
+
+            <!-- Search Form -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form id="search-form" method="get" action="{{ url_for('image.search_results') }}">
+                        <div class="mb-3">
+                            <label for="tag-input" class="form-label">按标签搜索</label>
+                            <input type="text" class="form-control" id="tag-input" name="tag" placeholder="输入标签关键词（如：2024年、高清）">
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="date-start" class="form-label">开始日期</label>
+                                <input type="date" class="form-control" id="date-start" name="date_start">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="date-end" class="form-label">结束日期</label>
+                                <input type="date" class="form-control" id="date-end" name="date_end">
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">搜索</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Help Text -->
+            <div class="alert alert-info">
+                <h5>搜索提示：</h5>
+                <ul class="mb-0">
+                    <li>按标签搜索：输入标签关键词（自动模糊匹配）</li>
+                    <li>按时间搜索：选择拍摄时间范围</li>
+                    <li>组合搜索：同时设置标签和时间范围可进行精确搜索</li>
+                    <li>常见标签：2024年、2025年、高清、标清、4K等</li>
+                </ul>
+            </div>
+
+            <!-- Quick Links -->
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <a href="{{ url_for('image.gallery') }}" class="btn btn-secondary w-100">
+                        <i class="bi bi-image"></i> 返回图片库
+                    </a>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <a href="{{ url_for('image.upload') }}" class="btn btn-success w-100">
+                        <i class="bi bi-upload"></i> 上传图片
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

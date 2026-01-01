@@ -31,3 +31,14 @@ CREATE TABLE `image` (
   INDEX `idx_user_id` (`user_id`),
   CONSTRAINT `fk_image_user` FOREIGN KEY (`user_id`) REFERENCES `user` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+-- Tag table: stores image tags for classification and search
+CREATE TABLE `tag` (
+  `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT COMMENT 'Tag ID',
+  `image_id` BIGINT UNSIGNED NOT NULL COMMENT 'Image ID (foreign key)',
+  `tag_content` VARCHAR(50) NOT NULL COMMENT 'Tag content (e.g., "2024年", "高清", "4K")',
+  PRIMARY KEY (`id`),
+  INDEX `idx_image_id` (`image_id`),
+  INDEX `idx_tag_content` (`tag_content`),
+  CONSTRAINT `fk_tag_image` FOREIGN KEY (`image_id`) REFERENCES `image` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

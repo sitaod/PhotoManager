@@ -1,0 +1,293 @@
+{% extends "base.html" %}
+
+{% block title %}图片详情 - PhotoManager{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row">
+        <!-- Image Section -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <img src="{{ url_for('static', filename=image.image_path) }}" class="card-img-top" alt="Image" style="max-height: 600px; object-fit: contain;">
+                <div class="card-body">
+                    <div class="btn-group w-100" role="group">
+                        <button type="button" class="btn btn-primary" onclick="rotateImage('rotate_90')">
+                            <i class="bi bi-arrow-clockwise"></i> 顺时针90°
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="rotateImage('rotate_180')">
+                            <i class="bi bi-arrow-repeat"></i> 旋转180°
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="rotateImage('rotate_270')">
+                            <i class="bi bi-arrow-counterclockwise"></i> 逆时针90°
+                        </button>
+                        <button type="button" class="btn btn-danger" onclick="confirmDelete()">
+                            <i class="bi bi-trash"></i> 删除
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Metadata Section -->
+        <div class="col-lg-4">
+            <!-- Image Info -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">图片信息</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label text-muted">上传时间</label>
+                        <p>{{ image.upload_time.strftime('%Y年%m月%d日 %H:%M:%S') }}</p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">拍摄时间</label>
+                        <p>
+                            {% if image.shoot_time %}
+                                {{ image.shoot_time.strftime('%Y年%m月%d日 %H:%M:%S') }}
+                            {% else %}
+                                未知
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label text-muted">分辨率</label>
+                        <p>
+                            {% if image.resolution %}
+                                {{ image.resolution }} 像素
+                            {% else %}
+                                未知
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label text-muted">拍摄位置</label>
+                        <p>
+                            {% if image.shoot_location %}
+                                {{ image.shoot_location }}
+                            {% else %}
+                                未知
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tags Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">标签</h5>
+                </div>
+                <div class="card-body">
+                    <div id="tags-container" class="mb-3">
+                        {% for tag in image.tags %}
+                            <div class="tag-item d-flex justify-content-between align-items-center mb-2" id="tag-{{ tag.id }}">
+                                <span class="badge bg-info">{{ tag.tag_content }}</span>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTag({{ tag.id }})">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </div>
+                        {% endfor %}
+                    </div>
+
+                    <!-- Add Tag Form -->
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="new-tag-input" placeholder="输入新标签">
+                        <button class="btn btn-outline-primary" type="button" onclick="addTag()">添加</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Back Button -->
+    <div class="mt-4">
+        <a href="{{ url_for('image.gallery') }}" class="btn btn-secondary">返回相册</a>
+    </div>
+</div>
+
+<!-- Loading Spinner (hidden by default) -->
+<div id="loading-spinner" class="spinner-border d-none" role="status" style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 9999;">
+    <span class="visually-hidden">处理中...</span>
+</div>
+
+<script>
+const IMAGE_ID = {{ image.id }};
+
+// Show loading spinner
+function showLoading() {
+    document.getElementById('loading-spinner').classList.remove('d-none');
+}
+
+// Hide loading spinner
+function hideLoading() {
+    document.getElementById('loading-spinner').classList.add('d-none');
+}
+
+// Rotate image
+async function rotateImage(rotationType) {
+    showLoading();
+    try {
+        const response = await fetch(`/image/api/${IMAGE_ID}/edit`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                edit_type: rotationType
+            })
+        });
+
+        // Check if response is ok
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Server error:', response.status, errorText);
+            alert(`请求失败 (${response.status}): 服务器错误`);
+            return;
+        }
+
+        const data = await response.json();
+        if (data.success) {
+            // Refresh the image by adding timestamp
+            const imageElement = document.querySelector('.card-img-top');
+            const timestamp = new Date().getTime();
+            imageElement.src = `{{ url_for('static', filename=image.image_path) }}?t=${timestamp}`;
+            alert('旋转成功');
+        } else {
+            alert('旋转失败: ' + data.error);
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        alert('请求失败: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// Delete image
+function confirmDelete() {
+    if (confirm('确定要删除此图片吗？此操作不可撤销。')) {
+        deleteImage();
+    }
+}
+
+async function deleteImage() {
+    showLoading();
+    try {
+        const response = await fetch(`/image/api/${IMAGE_ID}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            alert('删除成功');
+            window.location.href = '{{ url_for("image.gallery") }}';
+        } else {
+            alert('删除失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('请求失败: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// Add tag
+async function addTag() {
+    const input = document.getElementById('new-tag-input');
+    const tagContent = input.value.trim();
+
+    if (!tagContent) {
+        alert('请输入标签内容');
+        return;
+    }
+
+    if (tagContent.length > 50) {
+        alert('标签长度不能超过50字符');
+        return;
+    }
+
+    showLoading();
+    try {
+        const response = await fetch('/api/tag/add', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                image_id: IMAGE_ID,
+                tag_content: tagContent
+            })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            // Add new tag to display
+            const container = document.getElementById('tags-container');
+            const newTagElement = document.createElement('div');
+            newTagElement.className = 'tag-item d-flex justify-content-between align-items-center mb-2';
+            newTagElement.id = `tag-${data.tag_id}`;
+            newTagElement.innerHTML = `
+                <span class="badge bg-info">${data.tag_content}</span>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTag(${data.tag_id})">
+                    <i class="bi bi-x"></i>
+                </button>
+            `;
+            container.appendChild(newTagElement);
+            input.value = '';
+            alert('标签添加成功');
+        } else {
+            alert('添加失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('请求失败: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// Remove tag
+async function removeTag(tagId) {
+    if (!confirm('确定要删除此标签吗？')) {
+        return;
+    }
+
+    showLoading();
+    try {
+        const response = await fetch(`/api/tag/remove/${tagId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            const tagElement = document.getElementById(`tag-${tagId}`);
+            tagElement.remove();
+            alert('标签删除成功');
+        } else {
+            alert('删除失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('请求失败: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+</script>
+
+<style>
+.tag-item {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.tag-item:last-child {
+    border-bottom: none;
+}
+</style>
+{% endblock %}
