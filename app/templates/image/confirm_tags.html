@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block title %}确认标签 - 图片管理系统{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-body p-4">
+                    <h2 class="card-title mb-4">
+                        <i class="bi bi-check2-circle"></i> 确认图片标签
+                    </h2>
+                    
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i> 
+                        AI 已为你的图片生成以下标签，你可以删除不需要的标签，然后点击"确认上传"完成上传。
+                    </div>
+                    
+                    <!-- 图片预览 -->
+                    <div class="mb-4 text-center">
+                        <img src="{{ url_for('static', filename=image.thumbnail_path) }}" 
+                             class="img-fluid rounded shadow-sm" 
+                             style="max-height: 300px; object-fit: contain;">
+                    </div>
+                    
+                    <form method="POST" action="{{ url_for('image.confirm_tags', image_id=image.id) }}">
+                        <!-- 自动生成的标签（年份和分辨率） -->
+                        <div class="mb-4">
+                            <h5 class="mb-3">
+                                <i class="bi bi-tag"></i> 自动标签
+                            </h5>
+                            <div id="auto-tags">
+                                {% for tag in auto_tags %}
+                                <span class="badge bg-secondary me-2 mb-2" style="font-size: 1rem; padding: 0.5rem 0.8rem;">
+                                    {{ tag.tag_content }}
+                                </span>
+                                {% endfor %}
+                            </div>
+                            <small class="text-muted">这些标签根据图片元数据自动生成，无法删除</small>
+                        </div>
+                        
+                        <!-- AI 生成的标签 -->
+                        {% if ai_tags %}
+                        <div class="mb-4">
+                            <h5 class="mb-3">
+                                <i class="bi bi-stars"></i> AI 智能标签
+                            </h5>
+                            <div id="ai-tags">
+                                {% for tag in ai_tags %}
+                                <div class="badge bg-primary me-2 mb-2 position-relative" 
+                                     style="font-size: 1rem; padding: 0.5rem 0.8rem;"
+                                     id="tag-{{ tag.id }}">
+                                    {{ tag.tag_content }}
+                                    <button type="button" 
+                                            class="btn-close btn-close-white position-absolute top-0 end-0" 
+                                            style="font-size: 0.6rem; padding: 0.2rem;"
+                                            onclick="removeTag({{ tag.id }})"
+                                            aria-label="删除"></button>
+                                    <input type="hidden" name="keep_tags" value="{{ tag.id }}" id="input-{{ tag.id }}">
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <small class="text-muted">点击标签右上角的 × 可以删除不需要的标签</small>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-success btn-lg">
+                                <i class="bi bi-check-lg"></i> 确认上传
+                            </button>
+                            <a href="{{ url_for('image.delete_temp', image_id=image.id) }}" 
+                               class="btn btn-outline-danger"
+                               onclick="return confirm('确定要放弃此次上传吗？');">
+                                <i class="bi bi-x-lg"></i> 取消上传
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function removeTag(tagId) {
+    // 移除标签显示
+    const tagElement = document.getElementById('tag-' + tagId);
+    if (tagElement) {
+        tagElement.style.opacity = '0.3';
+        tagElement.style.textDecoration = 'line-through';
+        
+        // 移除对应的 hidden input，这样该标签不会被保留
+        const inputElement = document.getElementById('input-' + tagId);
+        if (inputElement) {
+            inputElement.remove();
+        }
+        
+        // 禁用删除按钮
+        const closeBtn = tagElement.querySelector('.btn-close');
+        if (closeBtn) {
+            closeBtn.disabled = true;
+            closeBtn.style.display = 'none';
+        }
+    }
+}
+</script>
+{% endblock %}

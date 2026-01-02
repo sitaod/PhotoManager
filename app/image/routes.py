@@ -12,6 +12,7 @@ from PIL.ExifTags import TAGS
 from app.image import image_bp
 from app.models import Image, Tag
 from app import db
+from app.services.ai_service import generate_tags_safely
 
 
 # Base paths (absolute) to avoid issues with non-ASCII filenames and working directory changes
@@ -109,15 +110,19 @@ def generate_thumbnail(source_path, thumb_path, max_size=400):
         return False
 
 
-def generate_automatic_tags(image_obj):
+def generate_automatic_tags(image_obj, use_ai=True):
     """
-    Generate automatic tags based on image metadata
-    Creates tags for: year, resolution classification
+    Generate automatic tags based on image metadata and AI analysis
+    Creates tags for: year, resolution classification, and AI-generated content tags
+    
+    Args:
+        image_obj: Image database object
+        use_ai: Whether to use AI for tag generation (default: True)
     """
     tags_to_create = []
     
     try:
-        # Generate year tag from shoot_time or current year
+        # 1. Generate year tag from shoot_time or current year
         if image_obj.shoot_time:
             year_tag = f"{image_obj.shoot_time.year}年"
         else:
@@ -128,7 +133,7 @@ def generate_automatic_tags(image_obj):
         if not year_tag_exists:
             tags_to_create.append(Tag(image_id=image_obj.id, tag_content=year_tag))
         
-        # Generate resolution classification tag
+        # 2. Generate resolution classification tag
         if image_obj.resolution:
             try:
                 width, height = map(int, image_obj.resolution.split('x'))
@@ -148,15 +153,65 @@ def generate_automatic_tags(image_obj):
                 # If resolution parsing fails, skip this tag
                 pass
         
-        # Bulk insert all tags
+        # 3. Generate AI tags using Qwen vision model (only if use_ai is True)
+        if use_ai:
+            try:
+                # Get absolute path to image file
+                image_absolute_path = BASE_DIR / 'static' / image_obj.image_path
+                
+                # Get configuration from current_app.config
+                api_key = current_app.config.get('QWEN_API_KEY', '')
+                base_url = current_app.config.get('QWEN_BASE_URL', '')
+                model = current_app.config.get('QWEN_MODEL', '')
+                
+                if api_key and os.path.exists(image_absolute_path):
+                    print(f"Generating AI tags for image: {image_obj.id}")
+                    ai_tags = generate_tags_safely(
+                        str(image_absolute_path),
+                        api_key,
+                        base_url,
+                        model
+                    )
+                    
+                    if ai_tags:
+                        print(f"AI generated {len(ai_tags)} tags: {ai_tags}")
+                        # Add AI tags to the list, checking for duplicates
+                        for ai_tag in ai_tags:
+                            # Check if tag already exists for this image
+                            tag_exists = Tag.query.filter_by(
+                                image_id=image_obj.id, 
+                                tag_content=ai_tag
+                            ).first()
+                            if not tag_exists:
+                                tags_to_create.append(Tag(
+                                    image_id=image_obj.id, 
+                                    tag_content=ai_tag
+                                ))
+                    else:
+                        print("No AI tags generated or API call failed")
+                else:
+                    if not api_key:
+                        print("Qwen API key not configured, skipping AI tag generation")
+                    if not os.path.exists(image_absolute_path):
+                        print(f"Image file not found: {image_absolute_path}")
+            except Exception as e:
+                # Log AI tag generation error but don't fail the whole process
+                print(f"Error generating AI tags: {str(e)}")
+        else:
+            print("AI tag generation skipped (use_ai=False)")
+        
+        # 4. Bulk insert all tags
         if tags_to_create:
             db.session.bulk_save_objects(tags_to_create)
             db.session.commit()
+            print(f"Successfully created {len(tags_to_create)} tags for image {image_obj.id}")
         
         return True
     
     except Exception as e:
         # Log error but don't fail the upload
+        print(f"Error in generate_automatic_tags: {str(e)}")
+        db.session.rollback()
         return False
 
 
@@ -223,16 +278,134 @@ def upload():
         db.session.add(image)
         db.session.commit()
         
-        # Generate automatic tags after image is saved
-        generate_automatic_tags(image)
+        # Check if user wants AI tag generation
+        use_ai_tags = request.form.get('use_ai_tags') == 'on'
         
-        flash('图片上传成功！', 'success')
-        return redirect(url_for('image.gallery'))
+        # Generate automatic tags after image is saved
+        generate_automatic_tags(image, use_ai=use_ai_tags)
+        
+        # If AI tags are enabled, redirect to confirmation page
+        if use_ai_tags:
+            flash('图片上传成功！请确认 AI 生成的标签。', 'info')
+            return redirect(url_for('image.confirm_tags_page', image_id=image.id))
+        else:
+            flash('图片上传成功！', 'success')
+            return redirect(url_for('image.gallery'))
     
     except Exception as e:
         db.session.rollback()
         flash(f'上传失败：{str(e)}', 'danger')
         return render_template('image/upload.html')
+
+
+@image_bp.route('/confirm_tags/<int:image_id>')
+@login_required
+def confirm_tags_page(image_id):
+    """Display tag confirmation page after upload with AI tags"""
+    image = Image.query.get_or_404(image_id)
+    
+    # Verify ownership
+    if image.user_id != current_user.id:
+        flash('无权访问此图片', 'danger')
+        return redirect(url_for('image.gallery'))
+    
+    # Get all tags for this image
+    all_tags = Tag.query.filter_by(image_id=image_id).all()
+    
+    # Separate auto tags (year and resolution) from AI tags
+    auto_tag_keywords = ['年', '4K', '高清', '标清']
+    auto_tags = []
+    ai_tags = []
+    
+    for tag in all_tags:
+        is_auto_tag = any(keyword in tag.tag_content for keyword in auto_tag_keywords)
+        if is_auto_tag:
+            auto_tags.append(tag)
+        else:
+            ai_tags.append(tag)
+    
+    return render_template('image/confirm_tags.html', 
+                         image=image, 
+                         auto_tags=auto_tags, 
+                         ai_tags=ai_tags)
+
+
+@image_bp.route('/confirm_tags/<int:image_id>', methods=['POST'])
+@login_required
+def confirm_tags(image_id):
+    """Process tag confirmation - delete unwanted AI tags"""
+    image = Image.query.get_or_404(image_id)
+    
+    # Verify ownership
+    if image.user_id != current_user.id:
+        flash('无权访问此图片', 'danger')
+        return redirect(url_for('image.gallery'))
+    
+    try:
+        # Get list of tags user wants to keep
+        keep_tag_ids = request.form.getlist('keep_tags')
+        keep_tag_ids = [int(tag_id) for tag_id in keep_tag_ids]
+        
+        # Get all AI tags (non-auto tags) for this image
+        all_tags = Tag.query.filter_by(image_id=image_id).all()
+        auto_tag_keywords = ['年', '4K', '高清', '标清']
+        
+        # Delete AI tags that were not selected to keep
+        deleted_count = 0
+        for tag in all_tags:
+            is_auto_tag = any(keyword in tag.tag_content for keyword in auto_tag_keywords)
+            # Only delete AI tags (not auto tags) that are not in keep list
+            if not is_auto_tag and tag.id not in keep_tag_ids:
+                db.session.delete(tag)
+                deleted_count += 1
+        
+        db.session.commit()
+        
+        if deleted_count > 0:
+            flash(f'已删除 {deleted_count} 个不需要的标签', 'success')
+        else:
+            flash('标签确认成功！', 'success')
+        
+        return redirect(url_for('image.detail', image_id=image_id))
+    
+    except Exception as e:
+        db.session.rollback()
+        flash(f'标签确认失败：{str(e)}', 'danger')
+        return redirect(url_for('image.confirm_tags_page', image_id=image_id))
+
+
+@image_bp.route('/delete_temp/<int:image_id>')
+@login_required
+def delete_temp(image_id):
+    """Delete temporarily uploaded image if user cancels tag confirmation"""
+    image = Image.query.get_or_404(image_id)
+    
+    # Verify ownership
+    if image.user_id != current_user.id:
+        flash('无权访问此图片', 'danger')
+        return redirect(url_for('image.gallery'))
+    
+    try:
+        # Delete image files
+        original_path = BASE_DIR / 'static' / image.image_path
+        thumbnail_path = BASE_DIR / 'static' / image.thumbnail_path
+        
+        if os.path.exists(original_path):
+            os.remove(original_path)
+        if os.path.exists(thumbnail_path):
+            os.remove(thumbnail_path)
+        
+        # Delete database record (tags will be cascade deleted)
+        db.session.delete(image)
+        db.session.commit()
+        
+        flash('已取消上传', 'info')
+        return redirect(url_for('image.upload'))
+    
+    except Exception as e:
+        db.session.rollback()
+        flash(f'删除失败：{str(e)}', 'danger')
+        return redirect(url_for('image.gallery'))
 
 
 @image_bp.route('/gallery')

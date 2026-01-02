@@ -29,6 +29,14 @@ class Config:
     
     # Return Chinese characters in JSON without escaping to ASCII
     JSON_AS_ASCII = False
+    
+    # Qwen AI Configuration
+    # API Key for Alibaba Cloud DashScope (Tongyi Qianwen)
+    QWEN_API_KEY = os.environ.get('API_KEY', '')
+    # Base URL for Qwen compatible API
+    QWEN_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+    # Model name for vision-language tasks
+    QWEN_MODEL = 'qwen-vl-max'
 
 
 class DevelopmentConfig(Config):
