@@ -368,6 +368,191 @@ def edit_image(image_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@image_bp.route('/api/<int:image_id>/crop', methods=['POST'])
+@login_required
+def crop_image(image_id):
+    """Crop image"""
+    image = Image.query.get_or_404(image_id)
+    
+    # Verify ownership
+    if image.user_id != current_user.id:
+        return jsonify({'success': False, 'error': '无权操作'}), 403
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': '请求数据无效'}), 400
+    
+    try:
+        left = int(data.get('left', 0))
+        top = int(data.get('top', 0))
+        right = int(data.get('right'))
+        bottom = int(data.get('bottom'))
+        
+        if not all([right, bottom]) or right <= left or bottom <= top:
+            return jsonify({'success': False, 'error': '裁剪参数无效'}), 400
+        
+        # Load original image
+        image_full_path = Path(current_app.static_folder) / image.image_path
+        pil_image = PILImage.open(image_full_path)
+        
+        # Crop image
+        cropped_image = pil_image.crop((left, top, right, bottom))
+        
+        # Save cropped image
+        if cropped_image.mode in ('RGBA', 'P'):
+            cropped_image = cropped_image.convert('RGB')
+        cropped_image.save(str(image_full_path), quality=95)
+        
+        # Regenerate thumbnail
+        thumb_full_path = Path(current_app.static_folder) / image.thumbnail_path
+        generate_thumbnail(str(image_full_path), str(thumb_full_path))
+        
+        # Update resolution
+        new_width, new_height = cropped_image.size
+        image.resolution = f"{new_width}x{new_height}"
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': '裁剪成功'}), 200
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@image_bp.route('/api/<int:image_id>/resize', methods=['POST'])
+@login_required
+def resize_image(image_id):
+    """Resize image"""
+    image = Image.query.get_or_404(image_id)
+    
+    # Verify ownership
+    if image.user_id != current_user.id:
+        return jsonify({'success': False, 'error': '无权操作'}), 403
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': '请求数据无效'}), 400
+    
+    try:
+        # Accept either scale (0.1-5.0) or dimensions (width, height)
+        scale = data.get('scale')
+        width = data.get('width')
+        height = data.get('height')
+        
+        if scale:
+            scale = float(scale)
+            if scale < 0.1 or scale > 5.0:
+                return jsonify({'success': False, 'error': '缩放比例应在 0.1 - 5.0 之间'}), 400
+        elif width and height:
+            width = int(width)
+            height = int(height)
+            if width < 10 or height < 10:
+                return jsonify({'success': False, 'error': '图片尺寸过小'}), 400
+        else:
+            return jsonify({'success': False, 'error': '缺少缩放参数'}), 400
+        
+        # Load original image
+        image_full_path = Path(current_app.static_folder) / image.image_path
+        pil_image = PILImage.open(image_full_path)
+        
+        # Calculate new size
+        if scale:
+            new_width = int(pil_image.width * scale)
+            new_height = int(pil_image.height * scale)
+        else:
+            new_width, new_height = width, height
+        
+        # Resize image (use LANCZOS for best quality)
+        resized_image = pil_image.resize((new_width, new_height), PILImage.Resampling.LANCZOS)
+        
+        # Save resized image
+        if resized_image.mode in ('RGBA', 'P'):
+            resized_image = resized_image.convert('RGB')
+        resized_image.save(str(image_full_path), quality=95)
+        
+        # Regenerate thumbnail
+        thumb_full_path = Path(current_app.static_folder) / image.thumbnail_path
+        generate_thumbnail(str(image_full_path), str(thumb_full_path))
+        
+        # Update resolution
+        image.resolution = f"{new_width}x{new_height}"
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': '缩放成功'}), 200
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@image_bp.route('/api/<int:image_id>/adjust', methods=['POST'])
+@login_required
+def adjust_image(image_id):
+    """Adjust image brightness, contrast, saturation, and hue"""
+    from PIL import ImageEnhance
+    
+    image = Image.query.get_or_404(image_id)
+    
+    # Verify ownership
+    if image.user_id != current_user.id:
+        return jsonify({'success': False, 'error': '无权操作'}), 403
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'success': False, 'error': '请求数据无效'}), 400
+    
+    try:
+        brightness = data.get('brightness', 1.0)
+        contrast = data.get('contrast', 1.0)
+        saturation = data.get('saturation', 1.0)
+        
+        # Validate ranges
+        brightness = float(brightness)
+        contrast = float(contrast)
+        saturation = float(saturation)
+        
+        if brightness < 0.1 or brightness > 3.0:
+            return jsonify({'success': False, 'error': '亮度值应在 0.1 - 3.0 之间'}), 400
+        if contrast < 0.1 or contrast > 3.0:
+            return jsonify({'success': False, 'error': '对比度值应在 0.1 - 3.0 之间'}), 400
+        if saturation < 0.0 or saturation > 3.0:
+            return jsonify({'success': False, 'error': '饱和度值应在 0.0 - 3.0 之间'}), 400
+        
+        # Load original image
+        image_full_path = Path(current_app.static_folder) / image.image_path
+        pil_image = PILImage.open(image_full_path)
+        
+        # Apply adjustments
+        if brightness != 1.0:
+            enhancer = ImageEnhance.Brightness(pil_image)
+            pil_image = enhancer.enhance(brightness)
+        
+        if contrast != 1.0:
+            enhancer = ImageEnhance.Contrast(pil_image)
+            pil_image = enhancer.enhance(contrast)
+        
+        if saturation != 1.0:
+            enhancer = ImageEnhance.Color(pil_image)
+            pil_image = enhancer.enhance(saturation)
+        
+        # Save adjusted image
+        if pil_image.mode in ('RGBA', 'P'):
+            pil_image = pil_image.convert('RGB')
+        pil_image.save(str(image_full_path), quality=95)
+        
+        # Regenerate thumbnail
+        thumb_full_path = Path(current_app.static_folder) / image.thumbnail_path
+        generate_thumbnail(str(image_full_path), str(thumb_full_path))
+        
+        db.session.commit()
+        
+        return jsonify({'success': True, 'message': '调整成功'}), 200
+    
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @image_bp.route('/api/<int:image_id>/delete', methods=['DELETE', 'POST'])
 @login_required
 def delete_image(image_id):

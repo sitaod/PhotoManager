@@ -8,9 +8,10 @@
         <!-- Image Section -->
         <div class="col-lg-8">
             <div class="card mb-4">
-                <img src="{{ url_for('static', filename=image.image_path) }}" class="card-img-top" alt="Image" style="max-height: 600px; object-fit: contain;">
+                <img id="mainImage" src="{{ url_for('static', filename=image.image_path) }}" class="card-img-top" alt="Image" style="max-height: 600px; object-fit: contain;">
                 <div class="card-body">
-                    <div class="btn-group w-100" role="group">
+                    <!-- 旋转操作 -->
+                    <div class="btn-group w-100 mb-2" role="group">
                         <button type="button" class="btn btn-primary" onclick="rotateImage('rotate_90')">
                             <i class="bi bi-arrow-clockwise"></i> 顺时针90°
                         </button>
@@ -20,8 +21,25 @@
                         <button type="button" class="btn btn-primary" onclick="rotateImage('rotate_270')">
                             <i class="bi bi-arrow-counterclockwise"></i> 逆时针90°
                         </button>
+                    </div>
+                    
+                    <!-- 编辑操作 -->
+                    <div class="btn-group w-100 mb-2" role="group">
+                        <button type="button" class="btn btn-success" onclick="showCropInterface()">
+                            <i class="bi bi-crop"></i> 裁剪
+                        </button>
+                        <button type="button" class="btn btn-success" onclick="showResizeInterface()">
+                            <i class="bi bi-arrows-fullscreen"></i> 缩放
+                        </button>
+                        <button type="button" class="btn btn-success" onclick="showAdjustInterface()">
+                            <i class="bi bi-sliders"></i> 调整
+                        </button>
+                    </div>
+                    
+                    <!-- 删除操作 -->
+                    <div class="d-grid">
                         <button type="button" class="btn btn-danger" onclick="confirmDelete()">
-                            <i class="bi bi-trash"></i> 删除
+                            <i class="bi bi-trash"></i> 删除图片
                         </button>
                     </div>
                 </div>
@@ -104,6 +122,115 @@
     <div class="mt-4">
         <a href="{{ url_for('image.gallery') }}" class="btn btn-secondary">返回图片库</a>
     </div>
+
+    <!-- Crop Interface (hidden by default) -->
+    <div id="cropInterface" class="card mt-4" style="display: none;">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">裁剪图片</h5>
+            <button type="button" class="btn-close" onclick="hideCropInterface()"></button>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">在下方图片上拖动鼠标选择裁剪区域</p>
+            <div style="position: relative; display: inline-block;">
+                <img id="cropImage" src="{{ url_for('static', filename=image.image_path) }}" 
+                     style="max-width: 100%; cursor: crosshair;" 
+                     onmousedown="startCropSelection(event)">
+            </div>
+            <div class="mt-3">
+                <div class="row">
+                    <div class="col-md-3">
+                        <label class="form-label">左边距</label>
+                        <input type="number" class="form-control" id="cropLeft" readonly>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">上边距</label>
+                        <input type="number" class="form-control" id="cropTop" readonly>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">右边距</label>
+                        <input type="number" class="form-control" id="cropRight" readonly>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">下边距</label>
+                        <input type="number" class="form-control" id="cropBottom" readonly>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-3">
+                <button type="button" class="btn btn-primary" onclick="applyCrop()">确认裁剪</button>
+                <button type="button" class="btn btn-secondary" onclick="resetCrop()">重置选区</button>
+                <button type="button" class="btn btn-secondary" onclick="hideCropInterface()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resize Interface (hidden by default) -->
+    <div id="resizeInterface" class="card mt-4" style="display: none;">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">缩放图片</h5>
+            <button type="button" class="btn-close" onclick="hideResizeInterface()"></button>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">缩放方式</label>
+                <select class="form-select" id="resizeMethod" onchange="toggleResizeMethod()">
+                    <option value="scale">按比例缩放</option>
+                    <option value="dimension">指定尺寸</option>
+                </select>
+            </div>
+            <div id="scaleMethod">
+                <div class="mb-3">
+                    <label class="form-label">缩放比例 (0.1-5.0)</label>
+                    <input type="number" class="form-control" id="resizeScale" value="1.0" min="0.1" max="5.0" step="0.1">
+                </div>
+            </div>
+            <div id="dimensionMethod" style="display: none;">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">宽度 (像素)</label>
+                        <input type="number" class="form-control" id="resizeWidth" min="1">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">高度 (像素)</label>
+                        <input type="number" class="form-control" id="resizeHeight" min="1">
+                    </div>
+                </div>
+            </div>
+            <div class="mt-3">
+                <button type="button" class="btn btn-primary" onclick="applyResize()">确认缩放</button>
+                <button type="button" class="btn btn-secondary" onclick="hideResizeInterface()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Adjust Interface (hidden by default) -->
+    <div id="adjustInterface" class="card mt-4" style="display: none;">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">调整图片</h5>
+            <button type="button" class="btn-close" onclick="hideAdjustInterface()"></button>
+        </div>
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">亮度: <span id="brightnessValue">1.0</span></label>
+                <input type="range" class="form-range" id="brightness" min="0.1" max="3.0" step="0.1" value="1.0" 
+                       oninput="updateSliderValue('brightness', 'brightnessValue')">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">对比度: <span id="contrastValue">1.0</span></label>
+                <input type="range" class="form-range" id="contrast" min="0.1" max="3.0" step="0.1" value="1.0" 
+                       oninput="updateSliderValue('contrast', 'contrastValue')">
+            </div>
+            <div class="mb-3">
+                <label class="form-label">饱和度: <span id="saturationValue">1.0</span></label>
+                <input type="range" class="form-range" id="saturation" min="0.1" max="3.0" step="0.1" value="1.0" 
+                       oninput="updateSliderValue('saturation', 'saturationValue')">
+            </div>
+            <div class="mt-3">
+                <button type="button" class="btn btn-primary" onclick="applyAdjust()">确认调整</button>
+                <button type="button" class="btn btn-secondary" onclick="hideAdjustInterface()">关闭</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Loading Spinner (hidden by default) -->
@@ -113,6 +240,18 @@
     </div>
 </div>
 
+<style>
+.crop-rect {
+    position: absolute;
+    border: 2px dashed #007bff;
+    background: rgba(0, 123, 255, 0.1);
+    pointer-events: none;
+}
+</style>
+
+{% endblock %}
+
+{% block extra_js %}
 <script>
 const IMAGE_ID = {{ image.id }};
 
@@ -132,6 +271,7 @@ function hideLoading() {
 
 // Rotate image
 async function rotateImage(rotationType) {
+    console.log('rotateImage called with type:', rotationType);
     showLoading();
     try {
         const response = await fetch(`/image/api/${IMAGE_ID}/edit`, {
@@ -144,17 +284,17 @@ async function rotateImage(rotationType) {
             })
         });
 
-        // Check if response is ok
         if (!response.ok) {
             const errorText = await response.text();
             console.error('Server error:', response.status, errorText);
             alert(`请求失败 (${response.status}): 服务器错误`);
+            hideLoading();
             return;
         }
 
         const data = await response.json();
+        console.log('rotate response:', data);
         if (data.success) {
-            // Refresh the image by adding timestamp
             const imageElement = document.querySelector('.card-img-top');
             const timestamp = new Date().getTime();
             imageElement.src = `{{ url_for('static', filename=image.image_path) }}?t=${timestamp}`;
@@ -189,7 +329,6 @@ async function deleteImage() {
 
         const data = await response.json();
         if (data.success) {
-            alert('删除成功');
             window.location.href = '{{ url_for("image.gallery") }}';
         } else {
             alert('删除失败: ' + data.error);
@@ -203,16 +342,11 @@ async function deleteImage() {
 
 // Add tag
 async function addTag() {
-    const input = document.getElementById('new-tag-input');
-    const tagContent = input.value.trim();
-
+    const tagInput = document.getElementById('new-tag-input');
+    const tagContent = tagInput.value.trim();
+    
     if (!tagContent) {
         alert('请输入标签内容');
-        return;
-    }
-
-    if (tagContent.length > 50) {
-        alert('标签长度不能超过50字符');
         return;
     }
 
@@ -231,20 +365,7 @@ async function addTag() {
 
         const data = await response.json();
         if (data.success) {
-            // Add new tag to display
-            const container = document.getElementById('tags-container');
-            const newTagElement = document.createElement('div');
-            newTagElement.className = 'tag-item d-flex justify-content-between align-items-center mb-2';
-            newTagElement.id = `tag-${data.tag_id}`;
-            newTagElement.innerHTML = `
-                <span class="badge bg-info">${data.tag_content}</span>
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeTag(${data.tag_id})">
-                    <i class="bi bi-x"></i>
-                </button>
-            `;
-            container.appendChild(newTagElement);
-            input.value = '';
-            alert('标签添加成功');
+            location.reload();
         } else {
             alert('添加失败: ' + data.error);
         }
@@ -272,8 +393,7 @@ async function removeTag(tagId) {
 
         const data = await response.json();
         if (data.success) {
-            const tagElement = document.getElementById(`tag-${tagId}`);
-            tagElement.remove();
+            document.getElementById(`tag-${tagId}`).remove();
             alert('标签删除成功');
         } else {
             alert('删除失败: ' + data.error);
@@ -284,16 +404,281 @@ async function removeTag(tagId) {
         hideLoading();
     }
 }
+
+// Crop selection variables
+let cropSelecting = false;
+let cropStart = { x: 0, y: 0 };
+let cropEnd = { x: 0, y: 0 };
+let cropRect = null;
+let cropImageElement = null;
+
+// Start crop selection
+function startCropSelection(event) {
+    event.preventDefault();
+    cropImageElement = document.getElementById('cropImage');
+    if (!cropImageElement) return;
+    
+    const rect = cropImageElement.getBoundingClientRect();
+    const displayWidth = rect.width;
+    const displayHeight = rect.height;
+    
+    cropStart = {
+        x: Math.max(0, Math.min(event.clientX - rect.left, displayWidth)),
+        y: Math.max(0, Math.min(event.clientY - rect.top, displayHeight))
+    };
+    cropSelecting = true;
+    
+    if (cropRect) cropRect.remove();
+    
+    cropRect = document.createElement('div');
+    cropRect.className = 'crop-rect';
+    cropRect.style.left = cropStart.x + 'px';
+    cropRect.style.top = cropStart.y + 'px';
+    cropRect.style.width = '0px';
+    cropRect.style.height = '0px';
+    
+    const container = cropImageElement.parentElement;
+    container.style.position = 'relative';
+    container.appendChild(cropRect);
+}
+
+// Update crop rectangle
+function updateCropRect(event) {
+    if (!cropSelecting || !cropImageElement) return;
+    
+    const rect = cropImageElement.getBoundingClientRect();
+    const displayWidth = rect.width;
+    const displayHeight = rect.height;
+    
+    cropEnd = {
+        x: Math.max(0, Math.min(event.clientX - rect.left, displayWidth)),
+        y: Math.max(0, Math.min(event.clientY - rect.top, displayHeight))
+    };
+    
+    if (cropRect) {
+        const left = Math.min(cropStart.x, cropEnd.x);
+        const top = Math.min(cropStart.y, cropEnd.y);
+        const width = Math.abs(cropEnd.x - cropStart.x);
+        const height = Math.abs(cropEnd.y - cropStart.y);
+        
+        cropRect.style.left = left + 'px';
+        cropRect.style.top = top + 'px';
+        cropRect.style.width = width + 'px';
+        cropRect.style.height = height + 'px';
+    }
+}
+
+// End crop selection
+function endCropSelection(event) {
+    if (!cropSelecting || !cropImageElement) return;
+    cropSelecting = false;
+    
+    if (cropRect) {
+        // Parse pixel values more reliably
+        const leftPx = parseFloat(cropRect.style.left) || 0;
+        const topPx = parseFloat(cropRect.style.top) || 0;
+        const widthPx = parseFloat(cropRect.style.width) || 0;
+        const heightPx = parseFloat(cropRect.style.height) || 0;
+        
+        const rightPx = leftPx + widthPx;
+        const bottomPx = topPx + heightPx;
+        
+        // Get scale factors (display size vs actual size)
+        const rect = cropImageElement.getBoundingClientRect();
+        const displayWidth = rect.width;
+        const displayHeight = rect.height;
+        const actualWidth = cropImageElement.naturalWidth;
+        const actualHeight = cropImageElement.naturalHeight;
+        
+        const scaleX = actualWidth / displayWidth;
+        const scaleY = actualHeight / displayHeight;
+        
+        // Convert to actual image coordinates
+        const left = Math.round(leftPx * scaleX);
+        const top = Math.round(topPx * scaleY);
+        const right = Math.round(rightPx * scaleX);
+        const bottom = Math.round(bottomPx * scaleY);
+        
+        if (right > left && bottom > top) {
+            document.getElementById('cropLeft').value = left;
+            document.getElementById('cropTop').value = top;
+            document.getElementById('cropRight').value = right;
+            document.getElementById('cropBottom').value = bottom;
+            console.log('Crop coordinates set:', {left, top, right, bottom});
+        }
+    }
+}
+
+// Document-level mouse events for crop
+document.addEventListener('mousemove', function(event) {
+    if (cropSelecting) {
+        updateCropRect(event);
+    }
+});
+
+document.addEventListener('mouseup', function(event) {
+    if (cropSelecting) {
+        endCropSelection(event);
+    }
+});
+
+// Reset crop
+function resetCrop() {
+    if (cropRect) cropRect.remove();
+    cropRect = null;
+    cropSelecting = false;
+    document.getElementById('cropLeft').value = '';
+    document.getElementById('cropTop').value = '';
+    document.getElementById('cropRight').value = '';
+    document.getElementById('cropBottom').value = '';
+}
+
+// Apply crop
+async function applyCrop() {
+    const left = parseInt(document.getElementById('cropLeft').value) || 0;
+    const top = parseInt(document.getElementById('cropTop').value) || 0;
+    const right = parseInt(document.getElementById('cropRight').value);
+    const bottom = parseInt(document.getElementById('cropBottom').value);
+
+    if (!right || !bottom || right <= left || bottom <= top) {
+        alert('请先在图片上拖动鼠标选择裁剪区域');
+        return;
+    }
+
+    showLoading();
+    try {
+        const response = await fetch(`/image/api/${IMAGE_ID}/crop`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ left, top, right, bottom })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('裁剪失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('请求失败: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// Apply resize
+async function applyResize() {
+    const method = document.getElementById('resizeMethod').value;
+    let params = {};
+
+    if (method === 'scale') {
+        const scale = parseFloat(document.getElementById('resizeScale').value);
+        if (scale === 0 || isNaN(scale) || scale < 0.1 || scale > 5.0) {
+            alert('缩放比例应在 0.1 - 5.0 之间');
+            return;
+        }
+        params.scale = scale;
+    } else {
+        const width = parseInt(document.getElementById('resizeWidth').value);
+        const height = parseInt(document.getElementById('resizeHeight').value);
+        if (isNaN(width) || isNaN(height) || width <= 0 || height <= 0) {
+            alert('请填写有效的宽度和高度');
+            return;
+        }
+        params.width = width;
+        params.height = height;
+    }
+
+    showLoading();
+    try {
+        const response = await fetch(`/image/api/${IMAGE_ID}/resize`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(params)
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('缩放失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('请求失败: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// Apply adjust
+async function applyAdjust() {
+    const brightness = parseFloat(document.getElementById('brightness').value) || 1.0;
+    const contrast = parseFloat(document.getElementById('contrast').value) || 1.0;
+    const saturation = parseFloat(document.getElementById('saturation').value) || 1.0;
+
+    showLoading();
+    try {
+        const response = await fetch(`/image/api/${IMAGE_ID}/adjust`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ brightness, contrast, saturation })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('调整失败: ' + data.error);
+        }
+    } catch (error) {
+        alert('请求失败: ' + error.message);
+    } finally {
+        hideLoading();
+    }
+}
+
+// Toggle resize method
+function toggleResizeMethod() {
+    const method = document.getElementById('resizeMethod').value;
+    document.getElementById('scaleMethod').style.display = method === 'scale' ? 'block' : 'none';
+    document.getElementById('dimensionMethod').style.display = method === 'dimension' ? 'block' : 'none';
+}
+
+// Update slider value display
+function updateSliderValue(sliderId, displayId) {
+    document.getElementById(displayId).textContent = parseFloat(document.getElementById(sliderId).value).toFixed(1);
+}
+
+// Show/hide interface functions
+function showCropInterface() {
+    document.getElementById('cropInterface').style.display = 'block';
+    document.getElementById('resizeInterface').style.display = 'none';
+    document.getElementById('adjustInterface').style.display = 'none';
+}
+
+function hideCropInterface() {
+    document.getElementById('cropInterface').style.display = 'none';
+    resetCrop();
+}
+
+function showResizeInterface() {
+    document.getElementById('resizeInterface').style.display = 'block';
+    document.getElementById('cropInterface').style.display = 'none';
+    document.getElementById('adjustInterface').style.display = 'none';
+}
+
+function hideResizeInterface() {
+    document.getElementById('resizeInterface').style.display = 'none';
+}
+
+function showAdjustInterface() {
+    document.getElementById('adjustInterface').style.display = 'block';
+    document.getElementById('cropInterface').style.display = 'none';
+    document.getElementById('resizeInterface').style.display = 'none';
+}
+
+function hideAdjustInterface() {
+    document.getElementById('adjustInterface').style.display = 'none';
+}
 </script>
-
-<style>
-.tag-item {
-    padding: 0.5rem 0;
-    border-bottom: 1px solid #f0f0f0;
-}
-
-.tag-item:last-child {
-    border-bottom: none;
-}
-</style>
 {% endblock %}
