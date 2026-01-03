@@ -13,6 +13,7 @@ from app.image import image_bp
 from app.models import Image, Tag
 from app import db
 from app.services.ai_service import generate_tags_safely
+from app.services.location_service import get_gps_details, get_city_from_coords
 
 
 # Base paths (absolute) to avoid issues with non-ASCII filenames and working directory changes
@@ -37,17 +38,18 @@ def allowed_file(filename):
 def extract_exif_data(image_path):
     """
     Extract EXIF data from image
-    Returns: (shoot_time, shoot_location)
+    Returns: (shoot_time, shoot_location, city_name)
     """
     shoot_time = None
     shoot_location = None
+    city_name = None
     
     try:
         image = PILImage.open(image_path)
         exif_data = image._getexif()
         
         if exif_data is None:
-            return None, None
+            return None, None, None
         
         # Parse EXIF tags
         exif_dict = {}
@@ -62,22 +64,32 @@ def extract_exif_data(image_path):
             except (ValueError, TypeError):
                 pass
         
-        # Extract GPS info (GPSInfo tag 34853)
-        if 'GPSInfo' in exif_dict:
+        # Extract GPS info and try to get city
+        gps_coords = get_gps_details(exif_dict)
+        if gps_coords:
+            lat, lon = gps_coords
+            # Try to get city name from Amap API
+            city_name = get_city_from_coords(lat, lon)
+            
+            if city_name:
+                shoot_location = city_name
+            else:
+                # Fallback to GPS coordinates string
+                shoot_location = f"GPS: {lat:.4f}, {lon:.4f}"
+        elif 'GPSInfo' in exif_dict:
+             # Fallback for raw GPS info if parsing failed but tag exists (legacy behavior)
             try:
                 gps_data = exif_dict['GPSInfo']
-                # Simple latitude/longitude extraction
-                if len(gps_data) > 4:
-                    # Format: latitude, longitude as string
-                    shoot_location = f"GPS: {gps_data}"
-            except (ValueError, TypeError, IndexError):
+                if len(gps_data) > 4 and not shoot_location:
+                     shoot_location = f"GPS: {gps_data}"
+            except:
                 pass
-    
+
     except Exception as e:
         # Silently handle EXIF parsing errors
         pass
     
-    return shoot_time, shoot_location
+    return shoot_time, shoot_location, city_name
 
 
 def get_image_resolution(image_path):
@@ -251,7 +263,7 @@ def upload():
         file.save(str(original_path))
         
         # Extract EXIF data
-        shoot_time, shoot_location = extract_exif_data(original_path)
+        shoot_time, shoot_location, city_name = extract_exif_data(original_path)
         
         # Get image resolution
         resolution = get_image_resolution(original_path)
@@ -278,6 +290,19 @@ def upload():
         db.session.add(image)
         db.session.commit()
         
+        # Add city tag if available
+        if city_name:
+            try:
+                # Check if tag already exists for this image (unlikely for new image but good practice)
+                existing_tag = Tag.query.filter_by(image_id=image.id, tag_content=city_name).first()
+                if not existing_tag:
+                    city_tag = Tag(tag_content=city_name, image_id=image.id)
+                    db.session.add(city_tag)
+                    db.session.commit()
+            except Exception as e:
+                # Ignore tag addition errors
+                pass
+
         # Check if user wants AI tag generation
         use_ai_tags = request.form.get('use_ai_tags') == 'on'
         
