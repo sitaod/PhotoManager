@@ -1,0 +1,149 @@
+{% extends "base.html" %}
+
+{% block extra_css %}
+<style>
+    .chat-message img {
+        max-width: 100%;
+        height: auto;
+        border-radius: 0.5rem;
+        margin-top: 0.5rem;
+    }
+    .chat-message p {
+        margin-bottom: 0.5rem;
+    }
+    .chat-message p:last-child {
+        margin-bottom: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm" style="height: 80vh; display: flex; flex-direction: column;">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="bi bi-robot"></i> 智能助手</h5>
+                    <span class="badge bg-light text-dark">Powered by Agent & MCP</span>
+                </div>
+                <div class="card-body" id="chat-history" style="flex: 1; overflow-y: auto; background-color: #f8f9fa;">
+                    <div class="d-flex justify-content-start mb-3">
+                        <div class="p-3 rounded bg-white border shadow-sm chat-message" style="max-width: 80%;">
+                            你好！我是你的智能图片助手。我可以帮你查找图片，例如：
+                            <ul class="mb-0 mt-2">
+                                <li>"帮我找找去年在杭州拍的照片"</li>
+                                <li>"搜索所有风景照"</li>
+                                <li>"查找2023年的照片"</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-white">
+                    <div class="input-group">
+                        <input type="text" id="user-input" class="form-control" placeholder="输入你的需求..." aria-label="User input">
+                        <button class="btn btn-primary" type="button" id="send-btn">
+                            <i class="bi bi-send"></i> 发送
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Import marked.js for Markdown rendering -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const chatHistory = document.getElementById('chat-history');
+    const userInput = document.getElementById('user-input');
+    const sendBtn = document.getElementById('send-btn');
+
+    function appendMessage(content, isUser) {
+        const wrapperDiv = document.createElement('div');
+        wrapperDiv.className = `d-flex justify-content-${isUser ? 'end' : 'start'} mb-3`;
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `p-3 rounded shadow-sm chat-message ${isUser ? 'bg-primary text-white' : 'bg-white border'}`;
+        messageDiv.style.maxWidth = '80%';
+        
+        if (isUser) {
+            // User messages are plain text
+            messageDiv.textContent = content;
+        } else {
+            // Agent messages are Markdown
+            messageDiv.innerHTML = marked.parse(content);
+        }
+        
+        wrapperDiv.appendChild(messageDiv);
+        chatHistory.appendChild(wrapperDiv);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+    }
+
+    function appendLoading() {
+        const id = 'loading-' + Date.now();
+        const wrapperDiv = document.createElement('div');
+        wrapperDiv.className = 'd-flex justify-content-start mb-3';
+        wrapperDiv.id = id;
+        
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'p-3 rounded bg-white border shadow-sm';
+        messageDiv.innerHTML = '<div class="spinner-border spinner-border-sm text-primary" role="status"><span class="visually-hidden">Loading...</span></div> 思考中...';
+        
+        wrapperDiv.appendChild(messageDiv);
+        chatHistory.appendChild(wrapperDiv);
+        chatHistory.scrollTop = chatHistory.scrollHeight;
+        return id;
+    }
+
+    function removeLoading(id) {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+    }
+
+    async function sendMessage() {
+        const text = userInput.value.trim();
+        if (!text) return;
+
+        appendMessage(text, true);
+        userInput.value = '';
+        userInput.disabled = true;
+        sendBtn.disabled = true;
+
+        const loadingId = appendLoading();
+
+        try {
+            const response = await fetch('/agent/api/chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ prompt: text })
+            });
+
+            const data = await response.json();
+            removeLoading(loadingId);
+
+            if (data.error) {
+                appendMessage('Error: ' + data.error, false);
+            } else {
+                appendMessage(data.response, false);
+            }
+        } catch (error) {
+            removeLoading(loadingId);
+            appendMessage('Network Error: ' + error.message, false);
+        } finally {
+            userInput.disabled = false;
+            sendBtn.disabled = false;
+            userInput.focus();
+        }
+    }
+
+    sendBtn.addEventListener('click', sendMessage);
+    userInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') sendMessage();
+    });
+});
+</script>
+{% endblock %}

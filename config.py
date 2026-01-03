@@ -36,7 +36,7 @@ class Config:
     # Base URL for Qwen compatible API
     QWEN_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1'
     # Model name for vision-language tasks
-    QWEN_MODEL = 'qwen-vl-max'
+    QWEN_MODEL = 'qwen3-vl-flash'
 
 
 class DevelopmentConfig(Config):

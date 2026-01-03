@@ -2,11 +2,12 @@
 Authentication routes and business logic
 """
 import re
-from flask import render_template, redirect, url_for, flash, request
+from flask import render_template, redirect, url_for, flash, request, jsonify
 from flask_login import login_user, logout_user, login_required, current_user
 from app.auth import auth_bp
 from app.models import User
 from app import db
+from app.utils.auth import generate_auth_token
 
 
 def validate_password_complexity(password):
@@ -128,12 +129,23 @@ def login():
         return redirect(url_for('index'))
     
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
-        password = request.form.get('password', '')
-        remember = request.form.get('remember', False)
+        # Support both JSON (for agents) and form submissions (for web UI)
+        if request.is_json:
+            data = request.get_json(silent=True) or {}
+            username = str(data.get('username', '')).strip()
+            password = data.get('password', '')
+            remember = bool(data.get('remember', False))
+            expects_json = True
+        else:
+            username = request.form.get('username', '').strip()
+            password = request.form.get('password', '')
+            remember = request.form.get('remember', False)
+            expects_json = request.accept_mimetypes['application/json'] >= request.accept_mimetypes['text/html']
         
         # Form data validation
         if not username or not password:
+            if expects_json:
+                return jsonify({'success': False, 'error': '用户名和密码不能为空！'}), 400
             flash('用户名和密码不能为空！', 'danger')
             return render_template('auth/login.html')
         
@@ -144,11 +156,17 @@ def login():
         
         # Verify user and password
         if user is None or not user.check_password(password):
+            if expects_json:
+                return jsonify({'success': False, 'error': '用户名或密码错误！'}), 401
             flash('用户名或密码错误！', 'danger')
             return render_template('auth/login.html')
         
         # Login user
         login_user(user, remember=bool(remember))
+        token = generate_auth_token(user.id)
+        if expects_json:
+            return jsonify({'success': True, 'token': token}), 200
+
         flash(f'欢迎回来，{user.username}！', 'success')
         
         # Redirect to next page specified in 'next' parameter, or home page

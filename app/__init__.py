@@ -38,6 +38,14 @@ def create_app(config_name='default'):
     # Register image blueprint
     from app.image import image_bp
     app.register_blueprint(image_bp, url_prefix='/image')
+
+    # Register API blueprint
+    from app.api import api_bp
+    app.register_blueprint(api_bp, url_prefix='/api')
+
+    # Register Agent blueprint
+    from app.agent import bp as agent_bp
+    app.register_blueprint(agent_bp, url_prefix='/agent')
     
     # Register main routes
     from app import main_routes
