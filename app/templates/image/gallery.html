@@ -9,6 +9,9 @@
             <h2><i class="bi bi-images"></i> 我的图片库</h2>
         </div>
         <div class="col-md-6 text-end">
+            <button type="button" class="btn btn-success me-2" data-bs-toggle="modal" data-bs-target="#slideshowModal">
+                <i class="bi bi-play-circle"></i> 播放幻灯片
+            </button>
             <a href="{{ url_for('image.search') }}" class="btn btn-info me-2">
                 <i class="bi bi-search"></i> 搜索
             </a>
@@ -64,6 +67,43 @@
                     </div>
                 </div>
             {% endfor %}
+        </div>
+
+        <!-- Slideshow Modal -->
+        <div class="modal fade" id="slideshowModal" tabindex="-1" aria-labelledby="slideshowModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-fullscreen">
+                <div class="modal-content bg-dark">
+                    <div class="modal-header border-0">
+                        <h5 class="modal-title text-white" id="slideshowModalLabel">图片轮播</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body d-flex align-items-center justify-content-center p-0">
+                        <div id="galleryCarousel" class="carousel slide w-100 h-100" data-bs-ride="carousel">
+                            <div class="carousel-inner h-100">
+                                {% for image in images %}
+                                    <div class="carousel-item h-100 {% if loop.first %}active{% endif %}">
+                                        <div class="d-flex justify-content-center align-items-center h-100">
+                                            <img src="{{ url_for('static', filename=image.image_path) }}" class="d-block" style="max-width: 100%; max-height: 100%; object-fit: contain;" alt="Image {{ image.id }}">
+                                            <div class="carousel-caption d-none d-md-block bg-dark bg-opacity-50 rounded p-2">
+                                                <h5>{{ image.shoot_location or '未知地点' }}</h5>
+                                                <p>{{ image.shoot_time.strftime('%Y-%m-%d') if image.shoot_time else '未知时间' }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                            <button class="carousel-control-prev" type="button" data-bs-target="#galleryCarousel" data-bs-slide="prev">
+                                <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Previous</span>
+                            </button>
+                            <button class="carousel-control-next" type="button" data-bs-target="#galleryCarousel" data-bs-slide="next">
+                                <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                                <span class="visually-hidden">Next</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     {% else %}
         <div class="alert alert-info" role="alert">
