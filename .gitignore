@@ -49,6 +49,7 @@ Thumbs.db
 
 # Logs
 *.log
+git_log.txt
 
 # User uploads (keep generated/media files out of git)
 app/static/uploads/

@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List, Any, Dict
 
 from flask import request, jsonify, url_for, Response
-from sqlalchemy import or_
+from sqlalchemy import or_, and_
 from sqlalchemy.orm import joinedload
 
 from app.api import api_bp
@@ -35,7 +35,15 @@ def _perform_search(user_id: int, params: Dict[str, Any]) -> List[Dict[str, Any]
             year_int = int(year_raw)
             start_dt = datetime(year_int, 1, 1)
             end_dt = datetime(year_int + 1, 1, 1)
-            query = query.filter(Image.shoot_time >= start_dt, Image.shoot_time < end_dt)
+            
+            # Match either shoot_time in range OR tag content equals "YYYY年"
+            year_tag = f"{year_int}年"
+            query = query.filter(
+                or_(
+                    and_(Image.shoot_time >= start_dt, Image.shoot_time < end_dt),
+                    Image.tags.any(Tag.tag_content == year_tag)
+                )
+            )
         except ValueError:
             pass
 

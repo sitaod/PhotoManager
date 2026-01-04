@@ -121,96 +121,46 @@ def run_agent_chat(prompt: str, token: str) -> str:
         
         tools = [image_search_tool]
 
-        # Try to build agent (using same logic as client script)
-        agent_executor = None
-        
-        # 0) Prefer LangGraph
-        try:
-            # Manual construction to avoid deprecation warnings with create_react_agent
-            from langgraph.graph import StateGraph, END
-            from langgraph.prebuilt import ToolNode
-            from typing import TypedDict, Annotated, Sequence
-            import operator
-            from langchain_core.messages import BaseMessage
+        # LangGraph Construction
+        from langgraph.graph import StateGraph, END
+        from langgraph.prebuilt import ToolNode
+        from typing import TypedDict, Annotated, Sequence
+        import operator
+        from langchain_core.messages import BaseMessage
 
-            class AgentState(TypedDict):
-                messages: Annotated[Sequence[BaseMessage], operator.add]
+        class AgentState(TypedDict):
+            messages: Annotated[Sequence[BaseMessage], operator.add]
 
-            def should_continue(state):
-                messages = state['messages']
-                last_message = messages[-1]
-                if last_message.tool_calls:
-                    return "tools"
-                return END
+        def should_continue(state):
+            messages = state['messages']
+            last_message = messages[-1]
+            if last_message.tool_calls:
+                return "tools"
+            return END
 
-            def call_model(state):
-                messages = state['messages']
-                response = llm.bind_tools(tools).invoke(messages)
-                return {"messages": [response]}
+        def call_model(state):
+            messages = state['messages']
+            response = llm.bind_tools(tools).invoke(messages)
+            return {"messages": [response]}
 
-            workflow = StateGraph(AgentState)
-            workflow.add_node("agent", call_model)
-            workflow.add_node("tools", ToolNode(tools))
+        workflow = StateGraph(AgentState)
+        workflow.add_node("agent", call_model)
+        workflow.add_node("tools", ToolNode(tools))
 
-            workflow.set_entry_point("agent")
-            workflow.add_conditional_edges("agent", should_continue)
-            workflow.add_edge("tools", "agent")
+        workflow.set_entry_point("agent")
+        workflow.add_conditional_edges("agent", should_continue)
+        workflow.add_edge("tools", "agent")
 
-            agent_executor = workflow.compile()
-        except ImportError:
-            pass
-            
-        if not agent_executor:
-            # 1) OpenAI Tools
-            try:
-                from langchain.agents import AgentExecutor, create_openai_tools_agent
-                from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-                
-                prompt_template = ChatPromptTemplate.from_messages([
-                    ("system", "你是一个图片搜索助手，根据用户需求调用可用工具来检索图片。"),
-                    ("human", "{input}"),
-                    MessagesPlaceholder(variable_name="agent_scratchpad"),
-                ])
-                agent = create_openai_tools_agent(llm=llm, tools=tools, prompt=prompt_template)
-                agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
-            except ImportError:
-                pass
-
-        if not agent_executor:
-            # 2) React
-            try:
-                from langchain.agents import AgentExecutor, create_react_agent
-                from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-                
-                prompt_template = ChatPromptTemplate.from_messages([
-                    ("system", "你是一个图片搜索助手，根据用户需求调用可用工具来检索图片。"),
-                    ("human", "{input}"),
-                    MessagesPlaceholder(variable_name="agent_scratchpad"),
-                ])
-                agent = create_react_agent(llm=llm, tools=tools, prompt=prompt_template)
-                agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
-            except ImportError:
-                pass
-
-        if not agent_executor:
-            return "Error: Could not initialize LangChain agent. Please check server dependencies."
+        agent_executor = workflow.compile()
 
         # Run the agent
-        # Check if it's LangGraph
-        is_langgraph = hasattr(agent_executor, "stream") and not hasattr(agent_executor, "agent")
-        
-        if is_langgraph:
-            inputs = {"messages": [("user", prompt)]}
-            result = agent_executor.invoke(inputs)
-            messages = result.get("messages", [])
-            if messages:
-                return messages[-1].content
-            return "(无响应)"
-        else:
-            result = agent_executor.invoke({"input": prompt})
-            if isinstance(result, dict) and "output" in result:
-                return result["output"]
-            return str(result)
+        system_prompt = "你是一个智能图片助手。当搜索到图片时，请务必使用 Markdown 图片语法 `![描述](url)` 展示图片，不要只给出链接。"
+        inputs = {"messages": [("system", system_prompt), ("user", prompt)]}
+        result = agent_executor.invoke(inputs)
+        messages = result.get("messages", [])
+        if messages:
+            return messages[-1].content
+        return "(无响应)"
 
     except Exception as e:
         return f"Agent execution error: {str(e)}"
