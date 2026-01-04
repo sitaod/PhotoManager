@@ -1,0 +1,43 @@
+services:
+  web:
+    build: .
+    ports:
+      - "5000:5000"
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=${DB_PASSWORD:-photomanager_pass}
+      - DB_NAME=photomanager
+      # Pass API keys from host environment or .env file
+      - API_KEY=${API_KEY}
+      - AMAP_KEY=${AMAP_KEY}
+      - SECRET_KEY=${SECRET_KEY:-dev_secret_key}
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      # Persist uploads
+      - ./app/static/uploads:/app/app/static/uploads
+    restart: always
+
+  db:
+    image: mysql:8.0
+    # Use native password plugin for compatibility
+    command: --default-authentication-plugin=mysql_native_password
+    environment:
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-photomanager_pass}
+      - MYSQL_DATABASE=photomanager
+    volumes:
+      - db_data:/var/lib/mysql
+    ports:
+      - "3307:3306" # Why 3307? To avoid conflicts with local MySQL installations
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
+
+volumes:
+  db_data:

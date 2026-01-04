@@ -1,201 +1,162 @@
 # Photo Manager
 
-A B/S architecture photo management system built with Flask and MySQL.
+PhotoManager 是一个基于 B/S 架构的图片管理系统，采用 Flask 开发，完成了图片上传、管理、编辑、搜索以及用户认证的完整链路。
 
-## Project Structure
+## 作者信息
+
+- **开发者**：丁思韬
+- **学号**：3230103566
+- **课程**：BS 体系软件设计
+- **日期**：2026 年 1 月
+
+## 目录结构树
 
 ```
 PhotoManager/
+├── run.py                    # 启动入口
+├── config.py                 # 配置（数据库、上传路径、白名单等）
+├── requirements.txt          # 依赖清单
+├── .env                      # 环境变量（数据库密码、API Key等）
+├── agent_mcp_client.py       # MCP 客户端（CLI 演示用）
+├── get_token.py              # 获取 JWT Token 工具脚本
+├── README.md                 # 说明文档
 ├── app/
-│   ├── __init__.py              # Flask application factory
-│   ├── models.py                # Database models
-│   ├── main_routes.py           # Main page routes
-│   ├── auth/                    # Authentication blueprint
+│   ├── __init__.py           # 应用工厂与扩展初始化
+│   ├── models.py             # User、Image、Tag 模型
+│   ├── main_routes.py        # 首页等通用路由
+│   ├── auth/                 # 认证蓝图
 │   │   ├── __init__.py
-│   │   └── routes.py            # Registration, login, logout logic
-│   ├── templates/               # Jinja2 templates
-│   │   ├── base.html            # Base template
-│   │   ├── index.html           # Home page
-│   │   └── auth/
-│   │       ├── login.html       # Login page
-│   │       └── register.html    # Registration page
-│   └── static/                  # Static assets
-│       ├── css/
-│       └── js/
-├── config.py                    # Configuration file
-├── run.py                       # Application entry point
-├── init_db.py                   # Database initialization script
-├── requirements.txt             # Python dependencies
-└── README.md                    # Project documentation
+│   │   └── routes.py         # 登录、注册、登出
+│   ├── image/                # 图片蓝图
+│   │   ├── __init__.py
+│   │   └── routes.py         # 上传、搜索、编辑、删除等接口
+│   ├── agent/                # 智能助手蓝图
+│   │   ├── __init__.py
+│   │   └── routes.py         # 聊天页面与 API 接口
+│   ├── api/                  # API 蓝图
+│   │   ├── mcp/              # MCP Server 实现
+│   │   │   └── routes.py     # JSON-RPC 2.0 接口
+│   ├── services/             # 业务逻辑服务
+│   │   ├── ai_service.py     # AI 标签生成服务
+│   │   └── agent_service.py  # LangGraph Agent 逻辑封装
+│   ├── static/               # 静态资源
+│   │   ├── css/custom.css
+│   │   ├── js/main.js
+│   │   └── uploads/
+│   │       ├── originals/    # 原图
+│   │       └── thumbnails/   # 缩略图
+│   └── templates/            # 模板
+│       ├── base.html
+│       ├── index.html
+│       ├── auth/login.html
+│       ├── auth/register.html
+│       ├── image/
+│       │   ├── upload.html
+│       │   ├── gallery.html
+│       │   ├── detail.html
+│       │   ├── confirm_tags.html
+│       │   ├── search.html
+│       │   └── search_results.html
+│       └── agent/
+│           └── chat.html     # 智能助手聊天界面
 ```
 
-## Tech Stack
+## 编译运行方式
 
-- **Backend**: Python 3.x + Flask 3.0
-- **Database**: MySQL 8.0 + SQLAlchemy ORM
-- **Frontend**: HTML5 + Bootstrap 5 + Vue.js (CDN)
-- **Authentication**: Flask-Login
+### 环境依赖
 
-## Setup & Installation
+- Python 3.12
+- MySQL 8.0
 
-### 1. Create Virtual Environment
-
-```bash
-python -m venv venv
-# Windows
-venv\Scripts\activate
-# Linux/Mac
-source venv/bin/activate
-```
-
-### 2. Install Dependencies
+### 1. 安装依赖
 
 ```bash
 pip install -r requirements.txt
 ```
 
-### 3. Configure Database
+### 2. 数据库配置
 
-Make sure MySQL is running and update `config.py` with your database credentials:
+1. 安装并启动 MySQL 8.0。
+2. 创建名为 `photomanager` 的数据库（字符集推荐 `utf8mb4`）。
+3. 在项目根目录创建 `.env` 文件，并写入数据库密码：
 
-```python
-SQLALCHEMY_DATABASE_URI = 'mysql+pymysql://username:password@host:port/database_name'
+```env
+DB_PASSWORD=your_mysql_password
 ```
 
-### 4. Initialize Database
+### 3. AI 与地图服务配置（可选）
 
-```bash
-python init_db.py
+如需使用 AI 智能打标和地理位置解析功能，请在 `.env` 文件中添加以下配置：
+
+```env
+# 阿里云通义千问 API Key
+API_KEY=sk-xxxxxxxxxxxxxxxx
+
+# 高德地图 Web 服务 Key
+AMAP_KEY=your_amap_key
 ```
 
-This will create all necessary tables in the database.
+### 4. 启动应用
 
-### 5. Run Application
+首次运行会自动创建数据库表结构。
 
 ```bash
 python run.py
 ```
 
-The application will be available at `http://localhost:5000`
+访问地址：[http://127.0.0.1:5000](http://127.0.0.1:5000)
 
-## Features
+## Docker 容器化部署
 
-### User Authentication
-- User registration with email validation
-- Password complexity validation (length > 6, at least 2 character types)
-- User login (supports username or email)
-- Session management with Flask-Login
-- User logout
+本项目支持使用 Docker Compose 进行一键部署，无需手动配置 Python 环境和 MySQL 数据库。
 
-### Image Management
-- **Image Upload**: Upload images with unique UUID-based filenames
-- **EXIF Extraction**: Automatically extract photo metadata:
-  - Shoot time (from EXIF DateTime)
-  - GPS location (from EXIF GPS info)
-- **Resolution Detection**: Capture image dimensions (format: WxH)
-- **Thumbnail Generation**: Auto-generate thumbnails (max 400px)
-- **Image Gallery**: Responsive grid display of uploaded images
-  - Mobile: 2-3 columns
-  - Desktop: 4-6 columns
-- **Metadata Display**: Show upload time, shoot time, resolution, location
+### 1. 准备工作
 
-### Tag System
-- **Automatic Tag Generation**: Tags created on image upload:
-  - Year tag: Based on shoot time or current year (e.g., "2024年", "2025年")
-  - Resolution tag: Classification ("4K", "高清", "标清")
-- **Manual Tag Management**:
-  - Add custom tags to images
-  - Remove tags from images
-- **Tag-based Search**: Find images by tag content (supports fuzzy matching)
+确保已安装 Docker Desktop 并启动。
 
-### Image Detail & Editing
-- **Image Detail Page**: View full-size image with all metadata and tags
-- **Image Rotation**: Rotate images 90°, 180°, 270° (clockwise/counterclockwise)
-- **Image Deletion**: Delete images with automatic cleanup of files and related tags
+### 2. 启动服务
 
-### Advanced Search
-- **Search by Tag**: Filter images by tag keywords
-- **Search by Date Range**: Filter images by shoot time range
-- **Combined Search**: Use tag and date filters together for precise results
-- **Search Results**: Display matching images with thumbnails and metadata
+在项目根目录运行：
 
-## Database Schema
+```bash
+docker-compose up -d --build
+```
 
-### User Table
-- `id`: User ID (BIGINT, PK, auto-increment)
-- `username`: Unique username (VARCHAR 50)
-- `email`: Unique email address (VARCHAR 100)
-- `password_hash`: Hashed password (VARCHAR 255)
-- `register_time`: Registration timestamp (DATETIME)
+该命令会自动构建镜像并启动 Web 应用（端口 5000）和 MySQL 数据库（端口 3307）。
 
-### Image Table
-- `id`: Image ID (BIGINT, PK, auto-increment)
-- `user_id`: Foreign key to User (BIGINT, FK with CASCADE)
-- `image_path`: Path to original image (VARCHAR 512)
-- `thumbnail_path`: Path to thumbnail (VARCHAR 512)
-- `upload_time`: Upload timestamp (DATETIME)
-- `shoot_time`: Photo shoot time from EXIF (DATETIME, nullable)
-- `shoot_location`: GPS location from EXIF (VARCHAR 200, nullable)
-- `resolution`: Image resolution in WxH format (VARCHAR 50, nullable)
+### 3. 初始化数据库
 
-### Tag Table
-- `id`: Tag ID (BIGINT, PK, auto-increment)
-- `image_id`: Foreign key to Image (BIGINT, FK with CASCADE)
-- `tag_content`: Tag content (VARCHAR 50, indexed)
+首次运行时，需要在容器内初始化数据库：
 
-## API Endpoints
+```bash
+docker-compose exec web python init_db.py
+```
 
-### Tag Management
-- `POST /api/tag/add`: Add a tag to image
-  - Parameters: `image_id`, `tag_content`
-  - Returns: JSON with success status and tag details
-  
-- `DELETE /api/tag/remove/<tag_id>`: Remove a tag
-  - Returns: JSON with success status
+访问地址：[http://localhost:5000](http://localhost:5000)
 
-### Image Editing
-- `POST /api/image/<image_id>/edit`: Edit image (rotation)
-  - Parameters: `edit_type` (rotate_90, rotate_180, rotate_270)
-  - Returns: JSON with success status
+## 网站使用方法
 
-- `DELETE /api/image/<image_id>/delete`: Delete image and files
-  - Returns: JSON with success status
+### 1. 注册与登录
+- 访问首页，点击“注册”创建账户。
+- 密码需包含至少两类字符且长度大于 6 位。
+- 注册后使用用户名或邮箱登录。
 
-## Routes
+### 2. 图片上传
+- 点击导航栏“上传图片”。
+- 选择图片文件（支持 JPG, PNG, WebP 等）。
+- 系统会自动解析 EXIF 信息（时间、地点）并生成缩略图。
+- 若配置了 AI Key，系统会自动分析图片内容并生成智能标签，上传后可进行确认或删除。
 
-- `GET /`: Home page
-- `GET /auth/register`: Registration page
-- `POST /auth/register`: Submit registration
-- `GET /auth/login`: Login page
-- `POST /auth/login`: Submit login
-- `GET /auth/logout`: Logout
-- `GET /image/upload`: Upload image page
-- `POST /image/upload`: Submit image upload
-- `GET /image/gallery`: View user's image gallery
-- `GET /image/detail/<image_id>`: View image details
-- `GET /image/search`: Search page
-- `GET /image/search_results`: Display search results
+### 3. 图片管理与编辑
+- **图库浏览**：按上传时间倒序展示，支持点击“播放幻灯片”进行全屏轮播。
+- **详情查看**：点击缩略图进入详情页，查看拍摄时间、地点、分辨率及所有标签。
+- **图片编辑**：
+  - **旋转**：支持 90°、180°、270° 旋转。
+  - **裁剪**：拖动鼠标选择区域进行裁剪。
+  - **缩放**：按比例或指定尺寸缩放图片。
+  - **调色**：调整亮度、对比度和饱和度。
+- **标签管理**：在详情页可手动添加或删除标签。
 
-## Usage Examples
-
-### Register and Login
-1. Visit `http://localhost:5000/auth/register`
-2. Create account with username, email, and strong password
-3. Login at `http://localhost:5000/auth/login`
-
-### Upload and Manage Images
-1. Click "上传" (Upload) in navbar
-2. Select an image file
-3. System automatically:
-   - Extracts EXIF metadata
-   - Generates thumbnail
-   - Creates year and resolution tags
-4. View image in gallery with all tags
-5. Click on image to view details and manage tags
-
-### Search Images
-1. Click "搜索" (Search) in navbar
-2. Enter tag keyword (e.g., "高清", "2024年")
-3. Optionally set date range
-4. System returns matching images
-
+### 4. 搜索功能
+- **普通搜索**：点击导航栏“搜索”，支持按标签、地点、时间范围组合查询。
+- **智能助手 (Agent)**：点击首页或导航栏的“智能助手”，使用自然语言（如“帮我找找去年在杭州拍的照片”）进行交互式搜索。

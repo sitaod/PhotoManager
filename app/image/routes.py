@@ -344,6 +344,10 @@ def confirm_tags_page(image_id):
     
     for tag in all_tags:
         is_auto_tag = any(keyword in tag.tag_content for keyword in auto_tag_keywords)
+        # Also treat location tag as auto tag
+        if image.shoot_location and tag.tag_content == image.shoot_location:
+            is_auto_tag = True
+            
         if is_auto_tag:
             auto_tags.append(tag)
         else:
@@ -379,6 +383,10 @@ def confirm_tags(image_id):
         deleted_count = 0
         for tag in all_tags:
             is_auto_tag = any(keyword in tag.tag_content for keyword in auto_tag_keywords)
+            # Also treat location tag as auto tag
+            if image.shoot_location and tag.tag_content == image.shoot_location:
+                is_auto_tag = True
+                
             # Only delete AI tags (not auto tags) that are not in keep list
             if not is_auto_tag and tag.id not in keep_tag_ids:
                 db.session.delete(tag)
