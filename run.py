@@ -2,9 +2,11 @@
 Application startup entry point
 """
 from app import create_app, db
+from app.services.semantic_search_service import start_semantic_index_worker
 
 # Create Flask application instance
 app = create_app('development')
+start_semantic_index_worker(app)
 
 
 @app.shell_context_processor

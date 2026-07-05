@@ -54,6 +54,9 @@ git_log.txt
 # User uploads (keep generated/media files out of git)
 app/static/uploads/
 
+# models
+models/
+
 # Other
 实验报告.md
 设计报告.md

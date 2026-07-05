@@ -14,6 +14,7 @@ from app.models import Image, Tag
 from app import db
 from app.services.ai_service import generate_tags_safely
 from app.services.location_service import get_gps_details, get_city_from_coords
+from app.services.semantic_search_service import delete_semantic_embedding, enqueue_image_for_embedding
 
 
 # Base paths (absolute) to avoid issues with non-ASCII filenames and working directory changes
@@ -289,6 +290,10 @@ def upload():
         
         db.session.add(image)
         db.session.commit()
+        try:
+            enqueue_image_for_embedding(image.id)
+        except Exception as e:
+            print(f"Failed to queue semantic embedding for image {image.id}: {e}", flush=True)
         
         # Add city tag if available
         if city_name:
@@ -429,8 +434,10 @@ def delete_temp(image_id):
             os.remove(thumbnail_path)
         
         # Delete database record (tags will be cascade deleted)
+        image_id_to_delete = image.id
         db.session.delete(image)
         db.session.commit()
+        delete_semantic_embedding(image_id_to_delete)
         
         flash('已取消上传', 'info')
         return redirect(url_for('image.upload'))
@@ -780,8 +787,10 @@ def delete_image(image_id):
             thumb_path.unlink()
         
         # Delete database record (cascade will delete related tags)
+        image_id_to_delete = image.id
         db.session.delete(image)
         db.session.commit()
+        delete_semantic_embedding(image_id_to_delete)
         
         return jsonify({'success': True, 'message': '删除成功'}), 200
     

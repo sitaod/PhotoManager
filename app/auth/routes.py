@@ -7,7 +7,6 @@ from flask_login import login_user, logout_user, login_required, current_user
 from app.auth import auth_bp
 from app.models import User
 from app import db
-from app.utils.auth import generate_auth_token
 
 
 def validate_password_complexity(password):
@@ -129,7 +128,7 @@ def login():
         return redirect(url_for('index'))
     
     if request.method == 'POST':
-        # Support both JSON (for agents) and form submissions (for web UI)
+        # Support both JSON and form submissions.
         if request.is_json:
             data = request.get_json(silent=True) or {}
             username = str(data.get('username', '')).strip()
@@ -163,9 +162,8 @@ def login():
         
         # Login user
         login_user(user, remember=bool(remember))
-        token = generate_auth_token(user.id)
         if expects_json:
-            return jsonify({'success': True, 'token': token}), 200
+            return jsonify({'success': True}), 200
 
         flash(f'欢迎回来，{user.username}！', 'success')
         

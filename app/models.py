@@ -63,6 +63,32 @@ class Image(db.Model):
         return f'<Image {self.id} of user {self.user_id}>'
 
 
+class SemanticEmbeddingJob(db.Model):
+    """
+    Background queue for images that need semantic embedding.
+    """
+    __tablename__ = 'semantic_embedding_job'
+
+    id = db.Column(db.BigInteger, primary_key=True, autoincrement=True, nullable=False)
+    image_id = db.Column(
+        db.BigInteger,
+        db.ForeignKey('image.id', ondelete='CASCADE'),
+        nullable=False,
+        unique=True,
+        index=True,
+    )
+    status = db.Column(db.String(20), nullable=False, default='pending', index=True)
+    attempts = db.Column(db.Integer, nullable=False, default=0)
+    last_error = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.now)
+    updated_at = db.Column(db.DateTime, nullable=False, default=datetime.now, onupdate=datetime.now)
+
+    image = db.relationship('Image', backref=db.backref('semantic_embedding_job', uselist=False, cascade='all, delete-orphan'))
+
+    def __repr__(self):
+        return f'<SemanticEmbeddingJob image={self.image_id} status={self.status}>'
+
+
 class Tag(db.Model):
     """
     Tag model for image classification
