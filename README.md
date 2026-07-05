@@ -95,10 +95,6 @@ MILVUS_HOST=127.0.0.1
 MILVUS_PORT=19530
 SIGLIP_MODEL_NAME=google/siglip-base-patch16-224
 SIGLIP_DEVICE=auto
-# 可选：Hugging Face 下载缓存位置
-HF_HOME=./models/.hf-cache
-# 可选：如果 Hugging Face 下载很慢，可使用镜像端点
-# HF_ENDPOINT=https://hf-mirror.com
 ```
 
 ### 4. 启动应用
@@ -144,23 +140,6 @@ DB_PORT=3307
 ```bash
 pip install -r requirements.txt
 python run.py
-```
-
-如果 SigLIP 模型下载一直停在 `0%`，通常是 Hugging Face 网络问题。可以先在 `.env` 中启用镜像端点：
-
-```env
-HF_ENDPOINT=https://hf-mirror.com
-HF_HOME=./models/.hf-cache
-```
-
-然后重启 `python run.py`。也可以手动下载到本地目录，并让项目从本地加载：
-
-```bash
-huggingface-cli download google/siglip-base-patch16-224 --local-dir models/siglip-base-patch16-224
-```
-
-```env
-SIGLIP_MODEL_NAME=./models/siglip-base-patch16-224
 ```
 
 ## Docker 容器化部署
@@ -217,4 +196,4 @@ docker-compose exec web python init_db.py
 ### 4. 搜索功能
 - **普通搜索**：点击导航栏“搜索”，支持按标签、地点、时间范围组合查询。
 - **智能助手 (Agent)**：点击首页或导航栏的“智能助手”，使用自然语言（如“帮我找找去年在杭州拍的照片”）进行交互式搜索。
-- **语义搜图**：智能助手可调用 `semantic_image_search`，使用 SigLIP 生成文本/图片向量，通过 Milvus HNSW 取 `5 * top_k` 候选，再用 SigLIP image-text matching 重排，返回包含 `score` 的 top-k 图片。图片上传后会进入 `semantic_embedding_job` 队列，后台 worker 自动生成 image embedding 并写入 Milvus；首次启动也会为已有图片补建队列。
+- **语义搜图**：智能助手可调用 `semantic_image_search`，使用 SigLIP + Milvus 检索图片，并返回 `score` 大于最高分 1/5 的相似结果。图片上传后会进入后台队列自动生成 embedding。
